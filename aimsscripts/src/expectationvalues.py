@@ -30,9 +30,6 @@ class observables(object):
         self.CWD  = cwd
         self.psFile = psFile
 
-
-
-
     def calcIncoherentSum(self, TBFpops, observable): 
         # It simply do what it do!
         incoherentSum = np.zeros(TBFpops[0].size)
@@ -251,6 +248,10 @@ class internals(observables):
         if ((self.internalName == None) and
             (internalName == None)):
             self.saveInternals(tmpCWD, interpFGintrnl, 1)
+        elif ((self.internalName == None) and
+            (internalName != None)):
+            self.saveInternals(tmpCWD, interpFGintrnl, 1,
+                               internalName = internalName)
         elif ((self.internalName != None) and
               (internalName == None)):
             self.saveInternals(tmpCWD, interpFGintrnl, 1, 
@@ -279,6 +280,10 @@ class internals(observables):
                 if ((self.internalName == None) and
                     (internalName == None)):
                         self.saveInternals(tmpCWD, interpCHintrnl, childID)
+                elif ((self.internalName == None) and
+                    (internalName != None)):
+                        self.saveInternals(tmpCWD, interpCHintrnl, childID,
+                                           internalName = internalName)
                 elif ((self.internalName != None) and
                       (internalName == None)):
                     self.saveInternals(tmpCWD, interpFGintrnl, childID, 
@@ -556,7 +561,7 @@ class molpop(object):
                                      internal[ind], internalTime[ind], thresh)
                     print(geom)
                     ind += 1
-            print len(geomTBFpop)
+            #print len(geomTBFpop)
 
     def addGeomMolpop(self, geomMolpop, geomTBFpop):
         if len(geomTBFpop) == 0:
@@ -591,7 +596,7 @@ class molpop(object):
             geomMolpop.append(bondMolpop)
 
     def getGeomMolpop(self, geomMolpop, geomTBFpop, geomBl):
-        print(len(geomTBFpop))
+        #print(len(geomTBFpop))
         if hasattr(self.prsr, "sampleSize"):
             for geom in np.arange(self.prsr.sampleSize):
                 if geom in self.prsr.dupList:
@@ -603,6 +608,53 @@ class molpop(object):
                         self.addGeomMolpop(geomMolpop, geomTBFpop[geom][rng])
                 else:
                     self.addGeomMolpop(geomMolpop, geomTBFpop[geom])
+
+    def globalExpec(self,internal,internalTime):
+        equivalentBonds = self.getEquivalentBonds()
+        numEquivBonds   = len(equivalentBonds)
+        print numEquivBonds
+        TBFpops = self.psFile.getTBFpopulations()
+        samples = []
+        for geom in np.arange(self.prsr.sampleSize):
+            for bond in np.arange(numEquivBonds):
+                if self.prsr.AIMStype != "AIMS":
+                    for rng in np.arange(self.prsr.nrRNGs):
+                        tmpInternals = []
+                        for spawn in np.arange(len(internal[geom][rng][bond])):
+                            tmpInternal = np.interp(self.prsr.interpTime,  
+                                    internalTime[geom][rng][bond][spawn],
+                                    internal[geom][rng][bond][spawn])  
+                            tmpInternals.append(tmpInternal)
+                        sample = self.internals.calcIncoherentSum(
+                                                TBFpops[geom][rng],
+                                                tmpInternals)
+                        samples.append(sample)
+                else:
+                    tmpInternals = []
+                    for spawn in np.arange(len(internal[geom][bond])):
+                        tmpInternal = np.interp(self.prsr.interpTime,  
+                                     internalTime[geom][bond][spawn],
+                                     internal[geom][bond][spawn])  
+                        tmpInternals.append(tmpInternal)
+                    sample = self.internals.calcIncoherentSum(
+                                                 TBFpops[geom],
+                                                  tmpInternals)
+                    samples.append(sample)
+
+        
+        mean = 0 
+        for sample in samples:
+            mean += sample
+        mean = mean / len(samples)
+        #print len(geomMolpop)
+        sd = 0 
+        for sample in samples:
+            sd += (sample - mean)**2 
+        sd = np.sqrt(sd / (len(samples) * (len(samples) - 1)))
+        saveFile  = self.prsr.internalType + self.prsr.dissPartners + "_"
+        saveFile += self.prsr.AIMStype + ".dat"
+        writeNPFile(3, saveFile, [self.prsr.interpTime, mean, sd], 
+                    fmtStyle = "%8d %30.18e %30.18e")
 
     def getMolpop(self):
         thresh, internal, internalTime = self.calculateDissociationThresh()
@@ -617,11 +669,11 @@ class molpop(object):
         for i in geomMolpop:
             mean += i 
         mean = mean / len(geomMolpop)
-        print len(geomMolpop)
+        #print len(geomMolpop)
         sd = 0 
         for i in geomMolpop:
             sd += (i - mean)**2 
-        sd = np.sqrt(sd / (self.prsr.sampleSize * (self.prsr.sampleSize - 1)))
+        sd = np.sqrt(sd / (len(geomMolpop) * (len(geomMolpop) - 1)))
 
         saveFile = "N_DISS_" + self.prsr.AIMStype + ".dat"
         writeNPFile(3, saveFile, [self.prsr.interpTime, mean, sd], 
@@ -629,3 +681,4 @@ class molpop(object):
         saveFile = "N_UNDISS_" + self.prsr.AIMStype + ".dat"
         writeNPFile(3, saveFile, [self.prsr.interpTime, 1 - mean, sd], 
                     fmtStyle = "%8d %30.18e %30.18e")
+        self.globalExpec(internal,internalTime)

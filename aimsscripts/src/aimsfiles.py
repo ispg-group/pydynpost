@@ -312,11 +312,18 @@ class processFiles(object):
                             except:
                                 continue
                             if interp:
-                                CHtime, CHamp = self.zeroPadArray(CHampData[:,0],
-                                                                  CHampData[:,1]) 
-                                interpCHamp = np.interp(self.prsr.interpTime, CHtime, 
-                                                        CHamp)
-                                rngTBFpop.append(interpCHamp)
+                                if len(list(CHampData.shape)) != 1:
+                                    CHtime, CHamp = self.zeroPadArray(CHampData[:,0],
+                                                                      CHampData[:,1]) 
+                                    interpCHamp = np.interp(self.prsr.interpTime, CHtime, 
+                                                            CHamp)
+                                    rngTBFpop.append(interpCHamp)
+                                else:
+                                    CHtime, CHamp = self.zeroPadArray(np.array([CHampData[0]]),
+                                                                      np.array([CHampData[1]])) 
+                                    interpCHamp = np.interp(self.prsr.interpTime, CHtime, 
+                                                            CHamp)
+                                    rngTBFpop.append(interpCHamp)
                             else:
                                 if len(list(CHampData.shape)) != 1:
                                     CHamp = CHampData[:,1]
