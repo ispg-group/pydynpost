@@ -1,40 +1,13 @@
 #!/usr/local/Cluster-Apps/python/2.7.9/bin/python
-import numpy as np
-from matplotlib import pyplot as plt
-import os
-from matplotlib import cm
-import matplotlib as mpl
-import math
-import importlib
-import modandmet
-from filesys import *
-from misc import *
-from parse import *
-from aimsinp import *
-from aimsfiles import *
 
-
-font = {'style' : 'normal', 'family' : 'serif', 'size': 11}                                                                                                                                                                                                             
-mpl.rc('font', **font)
-
-
-class FMSpost(object):
+class TSHpost(object):
     """
-       Main postprocessing script for FMS/AIMS simulations. Gathers different 
+       Main postprocessing script for TSH simulations. Gathers different 
        kinds of data and does statistics on it:
-         - State Populations  
-         - Number of TBFs
-         - Theoretical Nr. of ES Calls (Worst Case)
-         - Expectation values calculated in different ways
-            *) Incoherent
-            *) Coherent (not yet implemented, shipped at a later date maybe)
-       Other miscellaneous methods include:
-         - Calculation of momentum difference between parent and child at spawn 
-         - Failure times 
-         - Statistics of consistent histories (still to be finished)
-       It also supports calculation of various decoherence times (ONLY for AIMS).
-       Currently implemented:
-         - Schwartz-Rossky Decoherence Time
+         - State Populations 
+         - Expectation values calculated via incoherent sum over 
+           independent trajectories
+       More to come later on
     """
     moduleNames = modandmet.moduleNames
     methodNames = modandmet.methodNames
@@ -77,8 +50,21 @@ def main():
     cwd = os.getcwd()
     parser = parseInput("aimspost.inp", cwd)
     parser = initParser(parser) 
-    postprocessing = FMSpost(parser, cwd)
+    postprocessing = AIMSpost(parser, cwd)
     postprocessing.performTasks()
 
 if __name__ == "__main__":
+    import numpy as np
+    from matplotlib import pyplot as plt
+    import os
+    from matplotlib import cm
+    import matplotlib as mpl
+    import math
+    import importlib
+    import modandmet
+    from filesys import *
+    from misc import *
+    from parse import *
+    from tshpost import *
+    from tshfiles import *
     main()

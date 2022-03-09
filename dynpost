@@ -1,0 +1,29 @@
+#!/usr/local/Cluster-Apps/python/2.7.9/bin/python
+
+def main(): 
+    cwd = os.getcwd()
+    parser = parseInput("dynpost.inp", cwd)
+    parser.addInput("dynMethod", "Which dynamics method was used?")
+    moduleName = parser.dynMethod + "post"
+    mainName   = parser.dynMethod.upper() + "post" 
+    inpName = parser.dynMethod + "inp"
+    dynModule = importlib.import_module(moduleName)
+    inpModule = importlib.import_module(inpName)
+    parser = inpModule.initParser(parser) 
+    mainMethod = getattr(dynModule,mainName) 
+    postprocessing = mainMethod(parser, cwd) 
+    postprocessing.performTasks()
+
+if __name__ == "__main__":
+    import numpy as np
+    from matplotlib import pyplot as plt
+    import os
+    from matplotlib import cm
+    import matplotlib as mpl
+    import math
+    import importlib
+    import modandmet
+    from filesys import *
+    from misc import *
+    from parse import *
+    main()
