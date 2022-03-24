@@ -1,13 +1,13 @@
 # Dictonary containing tasks as keys and module name as values
-moduleNames = {"population"   : "population", 
-               "complexity"   : "complexity",
-               "coupling"     : "coupling", 
-               "selection"    : "selection",
-               "history"      : "histories",
-               "internals"    : "expectationvalues",
-               "molpop"       : "expectationvalues",
-               "decoherence"  : "decoherence",
-               "momentum"     : "spawninganalysis"} 
+moduleNames = {"population"   : "aimspopulation", 
+               "complexity"   : "aimscomplexity",
+               "coupling"     : "aimscoupling", 
+               "selection"    : "aimsselection",
+               "history"      : "aimshistories",
+               "internals"    : "aimsexpectationvalues",
+               "molpop"       : "aimsexpectationvalues",
+               "decoherence"  : "aimsdecoherence",
+               "momentum"     : "aimsspawninganalysis"} 
 
 # Dictonary containing tasks as keys and class names as values;
 # Important because some modules contain more than one class

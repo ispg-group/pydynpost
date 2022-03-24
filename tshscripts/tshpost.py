@@ -1,4 +1,17 @@
 #!/usr/local/Cluster-Apps/python/2.7.9/bin/python
+import numpy as np
+from matplotlib import pyplot as plt
+import os
+from matplotlib import cm
+import matplotlib as mpl
+import math
+import importlib
+from filesys import *
+from misc import *
+from parse import *
+from tshinp import *
+import tshfiles 
+import tshmodandmet
 
 class TSHpost(object):
     """
@@ -9,15 +22,17 @@ class TSHpost(object):
            independent trajectories
        More to come later on
     """
-    moduleNames = modandmet.moduleNames
-    methodNames = modandmet.methodNames
+    moduleNames = tshmodandmet.moduleNames
+    methodNames = tshmodandmet.methodNames
 
     def __init__(self, parser, cwd):
         # Important variables that almost all methods need to function
         self.prsr = parser
         self.CWD  = cwd 
         self.dirsInCwd = getDirs(self.CWD)
-        self.psFile = processFiles(self.prsr, self.CWD)
+        # find processFiles class correspoding to correct TSH code
+        psFileClass = getattr(tshfiles, "processFiles" + self.prsr.code.upper()) 
+        self.psFile = psFileClass(self.prsr, self.CWD)
 
         # Next only import those modules that are actually required
         # for a given task  
@@ -54,17 +69,4 @@ def main():
     postprocessing.performTasks()
 
 if __name__ == "__main__":
-    import numpy as np
-    from matplotlib import pyplot as plt
-    import os
-    from matplotlib import cm
-    import matplotlib as mpl
-    import math
-    import importlib
-    import modandmet
-    from filesys import *
-    from misc import *
-    from parse import *
-    from tshpost import *
-    from tshfiles import *
     main()

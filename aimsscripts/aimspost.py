@@ -1,4 +1,17 @@
 #!/usr/local/Cluster-Apps/python/2.7.9/bin/python
+import numpy as np
+from matplotlib import pyplot as plt
+import os
+from matplotlib import cm
+import matplotlib as mpl
+import math
+import importlib
+from filesys import *
+from misc import *
+from parse import *
+from aimsinp import *
+from aimsfiles import *
+import aimsmodandmet
 
 class AIMSpost(object):
     """
@@ -18,8 +31,8 @@ class AIMSpost(object):
        Currently implemented:
          - Schwartz-Rossky Decoherence Time
     """
-    moduleNames = modandmet.moduleNames
-    methodNames = modandmet.methodNames
+    moduleNames = aimsmodandmet.moduleNames
+    methodNames = aimsmodandmet.methodNames
 
     def __init__(self, parser, cwd):
         # Important variables that almost all methods need to function
@@ -63,17 +76,4 @@ def main():
     postprocessing.performTasks()
 
 if __name__ == "__main__":
-    import numpy as np
-    from matplotlib import pyplot as plt
-    import os
-    from matplotlib import cm
-    import matplotlib as mpl
-    import math
-    import importlib
-    import modandmet
-    from filesys import *
-    from misc import *
-    from parse import *
-    from aimsinp import *
-    from aimsfiles import *
     main()

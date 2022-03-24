@@ -6,15 +6,12 @@ from misc import *
 from parse import *
 
 def initParser(parser):
-    parser.addInput("pckg", "Which AIMS interface was used?")
+    parser.addInput("code", "Which tsh code did you use")
     parser.addInput("todo", "What do you want to do?", arr = True)
-    if parser.pckg == "molpro": 
-        parser.addInput("outputDir", "What is the directory name?")
 
     parser.addInput("geomDir", "What is the common IC directrory name?")
     if not(hasattr(parser, "geomDir")): 
         parser.addd("geomDir", "geom")
-    parser.addInput("AIMStype", "What AIMS type was used?")
     if (("population" in parser.todo) or ("coupling" in parser.todo)):
         parser.addInput("nrStates", "How many states?")
     parser.addInput("maxTime", "What is the largest time step?")
@@ -22,11 +19,10 @@ def initParser(parser):
     parser.addd("interpTime", np.arange(0, parser.maxTime + parser.step, 
                                         parser.step))
 
-    if parser.AIMStype != "AIMS":
-        parser.addInput("nrRNGs", "How many rngs?")
-        parser.addInput("RNGdir", "What is the common RNG directory name?")
-        if not(hasattr(parser, "RNGdir")): 
-            parser.addd("RNGdir", "rng")
+    parser.addInput("nrRNGs", "How many rngs?")
+    parser.addInput("RNGdir", "What is the common RNG directory name?")
+    if not(hasattr(parser, "RNGdir")): 
+        parser.addd("RNGdir", "rng")
 
     parser.addInput("sampleSize", "How many ICs?")
     parser.addInput("duplicatesExist", "Do duplicates exist?")
