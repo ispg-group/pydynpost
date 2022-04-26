@@ -16,6 +16,7 @@ def calcBL(atmcoordi, atmcoordj):
         Calculate the length between two vectors.
         Mostly used to calculate bond-length
     """
+    #print atmcoordi, atmcoordj
     vecji = atmcoordi - atmcoordj
     return np.sqrt(np.dot(vecji, vecji))
 

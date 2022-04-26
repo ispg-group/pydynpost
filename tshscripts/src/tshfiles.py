@@ -28,16 +28,22 @@ class processFiles(object):
         pass
 
     @abc.abstractmethod
-    def getNrAtoms(self):
+    def getNrAtoms(self, fileName):
         pass
 
     @abc.abstractmethod
     def readPotEnergies(self):
         pass
 
-    def readPositions(self): 
-        fileNameRt = "movie.xyz"
-        nrAtoms = self.getNrAtoms()
+    def readPositions(self, trajFileName, initFileName): 
+        if self.prsr.nrRNGs != 0: 
+            fileName  = self.CWD + "/" + self.prsr.RNGdir
+            fileName += str(1) + "/" + self.prsr.geomDir
+            fileName += str(1) + "/" + initFileName 
+        else:
+            fileName  = self.CWD + "/" + self.prsr.geomDir
+            fileName += str(1) + "/" + initFileName 
+        nrAtoms = self.getNrAtoms(fileName) 
         positions = []
         for geom in np.arange(1, self.prsr.sampleSize + 1):
             #print "geom" + str(geom)
@@ -45,19 +51,24 @@ class processFiles(object):
             if geom in self.prsr.dupList:
                 continue
             if self.prsr.nrRNGs != 0: 
-                rngPositions = []
                 for rng in np.arange(1, self.prsr.nrRNGs + 1):
-                    currFileName  = self.CWD + "/" + self.prsr.RNGdir 
-                    currFileName += str(rng) + "/" + self.prsr.geomDir 
-                    currFileName += str(geom) + "/" + fileNameRt
-                    self.addPositions(currFileName, nrAtoms, rngPositions)
-                geomPositions.append(rngPositions)
+                    rngPositions = []
+                    currFileNameRt  = self.CWD + "/" + self.prsr.RNGdir 
+                    currFileNameRt += str(rng) + "/" + self.prsr.geomDir 
+                    currFileNameRt += str(geom) 
+                    currTrajFileName = currFileNameRt + "/" + trajFileName
+                    currInitFileName = currFileNameRt + "/" + initFileName
+                    self.addPositions(currInitFileName, currTrajFileName, nrAtoms, rngPositions)
+                    geomPositions.append(rngPositions)
             else:
-                currFileName  = self.CWD + "/" + self.prsr.geomDir 
-                currFileName += str(geom) + "/" + fileNameRt 
-                self.addPositions(currFileName, nrAtoms, geomPositions)
+                currFileNameRt  = self.CWD + "/" + self.prsr.geomDir 
+                currFileNameRt += str(geom)  
+                currTrajFileName = currFileNameRt + "/" + trajFileName
+                currInitFileName = currFileNameRt + "/" + initFileName
+                self.addPositions(currInitFileName, currTrajFileName, nrAtoms, geomPositions)
             positions.append(geomPositions)
                 
+        #print len(positions[0])
         return positions
 
 class processFilesABIN(processFiles):
@@ -77,9 +88,11 @@ class processFilesABIN(processFiles):
                     currDat   = np.genfromtxt(currFileName)
                     currTime  = currDat[:,0]
                     currState = currDat[:,1] 
-                    interpCurrState = np.interp(self.prsr.interpTime, 
-                                                currTime, currState) 
-                    geomCurrentStates.append(interpCurrState)
+                    currState = currState[currTime <= self.prsr.maxTime]
+                    currTime  = currTime[currTime <= self.prsr.maxTime]
+                    #interpCurrState = np.interp(self.prsr.interpTime, 
+                    #                            currTime, currState) 
+                    geomCurrentStates.append(currState)
                 currentStates.append(geomCurrentStates)
                      
             else:
@@ -88,17 +101,21 @@ class processFilesABIN(processFiles):
                 currDat   = np.genfromtxt(currFileName)
                 currTime  = currDat[:,0]
                 currState = currDat[:,1] 
-                interpCurrState = np.interp(self.prsr.interpTime, 
-                                            currTime, currState) 
-                currentStates.append(interpCurrState)
+                currState = currState[currTime <= self.prsr.maxTime]
+                currTime  = currTime[currTime <= self.prsr.maxTime]
+                #interpCurrState = np.interp(self.prsr.interpTime, 
+                #                            currTime, currState) 
+                currentStates.append(currState)
         return currentStates
                 
 
     def readStatePopulations(self): 
         fileNameRt = "pop.dat"
         statePopulation = []
+        time = []
         for geom in np.arange(1, self.prsr.sampleSize + 1):
             geomStatePopulation = []
+            geomTime = []
             if geom in self.prsr.dupList:
                 continue
             if self.prsr.nrRNGs != 0: 
@@ -111,11 +128,17 @@ class processFilesABIN(processFiles):
                     currTime  = currDat[:,0]
                     for state in np.arange(2,self.prsr.nrStates+2):
                         currStatePop = currDat[:, state] 
-                        interpCurrStatePop = np.interp(self.prsr.interpTime, 
-                                                       currTime, currStatePop) 
-                        rngStatePopulation.append(interpCurrStatePop)
+                        #interpCurrStatePop = np.interp(self.prsr.interpTime, 
+                        #                               currTime, currStatePop) 
+                        currStatePop = currStatePop[currTime <= self.prsr.maxTime]
+                        #print "pop", currStatePop.size
+                        rngStatePopulation.append(currStatePop)
                     geomStatePopulation.append(rngStatePopulation)
+                    currTime  = currTime[currTime <= self.prsr.maxTime]
+                    #print "time", currTime.size
+                    geomTime.append(currTime)
                 statePopulation.append(geomStatePopulation)
+                time.append(geomTime)
                      
             else:
                 currFileName  = self.CWD + "/" + self.prsr.geomDir 
@@ -124,21 +147,76 @@ class processFilesABIN(processFiles):
                 currTime  = currDat[:,0]
                 for state in np.arange(2,self.prsr.nrStates+2):
                     currStatePop = currDat[:, state] 
-                    interpCurrStatePop = np.interp(self.prsr.interpTime, 
-                                                   currTime, currStatePop) 
-                    geomStatePopulation.append(interpCurrStatePop)
+                    #interpCurrStatePop = np.interp(self.prsr.interpTime, 
+                    #                               currTime, currStatePop) 
+                    currStatePop = currStatePop[currTime <= self.prsr.maxTime]
+                    geomStatePopulation.append(currStatePop)
                 statePopulation.append(geomStatePopulation)
+                currTime  = currTime[currTime <= self.prsr.maxTime]
+                #print currTime.size
+                time.append(currTime)
                 
                 
-        return statePopulation
+        return statePopulation, time
 
-    def addPositions(self, fileName, nrAtoms, outTraj):
+    def addInitGeom(self, initFileName, nrAtoms):
+        with open(initFileName, "r") as initGLines:
+            readNrParticles = True
+            startRead = False
+            nrLines = 0
+            posTimes = []
+            positions = []
+            curPos = []
+            for initGLine in initGLines:
+                curSpltLine = initGLine.strip().split()
+                if (len(curSpltLine) == 1) and (readNrParticles == True):
+                    nrParticles     = int(curSpltLine[0])
+                    readNrParticles = False 
+                    startRead = True
+                    nrLines += 1
+                    continue
+                elif (len(curSpltLine) == 1): 
+                    startRead = True
+                    nrLines += 1
+                    continue
+
+                if (startRead and (nrLines >= 2)):
+                    if (nrLines < (nrParticles + 1)):
+                        atomName = curSpltLine[0]
+                        atomPos  = [atomName + str(nrLines - 1)]
+                        atomPos.extend([float(x)*0.529177 for x in curSpltLine[1:]])
+                        curPos.append(atomPos)
+                        nrLines += 1
+                    else:
+                        atomName = curSpltLine[0]
+                        atomPos  = [atomName + str(nrLines - 1)]
+                        atomPos.extend([float(x)*0.529177 for x in curSpltLine[1:]])
+                        curPos.append(atomPos)
+                        positions.append(curPos)
+                        startRead = False
+                        nrLines = 0
+                        curPos = []
+                else:
+                    nrLines += 1
+                    curTime = 0.0 
+                    posTimes.append(curTime)
+                    continue
+
+        return list(zip(posTimes,positions))
+
+        
+
+    def addPositions(self, initFileName, trajFileName, nrAtoms, outTraj):
         readTimestep = lambda a: float(a[-1]) 
-        outTraj.append(files.addTraj(fileName, nrAtoms, readTimestep, outTraj))
-        print len(outTraj)
+        outTraj.append(self.addInitGeom(initFileName, nrAtoms))
+        #print outTraj
+        outTraj[-1].extend(files.addTraj(trajFileName, nrAtoms, readTimestep))
+        #print outTraj
+        #print len(outTraj)
 
-    def getNrAtoms(self):
-        pass
+    def getNrAtoms(self, fileName):
+        with open(fileName, "r") as geomLines:
+            return int(geomLines.readline().strip().split()[0])
 
     def readPotEnergies(self):
         pass

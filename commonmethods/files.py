@@ -6,7 +6,7 @@ from filesys import *
 from misc import *
 from parse import *
 
-def addTraj(fileName, nrAtoms, readTimestep, outTraj):
+def addTraj(fileName, nrAtoms, readTimestep):
     """
         Since most trajectory files have the same
         structure but a different position of the 

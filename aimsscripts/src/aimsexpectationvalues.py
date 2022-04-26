@@ -1,8 +1,11 @@
 #!/usr/local/Cluster-Apps/python/2.7.9/bin/python
 import numpy as np
+from matplotlib import pyplot as plt
 import abc
 from abc import ABCMeta
 import os
+from matplotlib import cm
+import matplotlib as mpl
 import math
 import copy
 from filesys import *
@@ -178,7 +181,8 @@ class internals(observables):
                                                  internalName = 
                                                  self.internalName) 
 
-    def saveInternals(self, tmpCWD, curInternals, ID, internalName = None):
+    def saveInternals(self, tmpCWD, curInternals, ID, internalName = None,
+                      popTBF = None, time = None):
         if internalName == None:
             saveString  = self.prsr.internalType + self.prsr.internalName
         else: 
@@ -186,10 +190,19 @@ class internals(observables):
         saveString += "." + str(ID) 
         saveFile    = self.psFile.inputFileName(tmpCWD, saveString)
          
-        saveInternals   = curInternals[curInternals > 0]
-        saveTime        = self.prsr.interpTime[curInternals > 0]
-        writeNPFile(2, saveFile, [saveTime, saveInternals], 
-                    fmtStyle = "%8d %30.18e") 
+        if ((popTBF == None) and (time == None)): 
+            saveInternals   = curInternals[curInternals > 0]
+            saveTime        = self.prsr.interpTime[curInternals > 0]
+            writeNPFile(2, saveFile, [saveTime, saveInternals], 
+                        fmtStyle = "%8d %30.18e") 
+        else:
+            #print popTBF
+            if not(len(time) == 1):
+                saveTime        = np.linspace(time[0], time[-1], 1000)
+                saveInternals   = np.interp(saveTime, time, curInternals)
+                savePop         = np.interp(saveTime, time, popTBF)
+                writeNPFile(3, saveFile, [saveTime, saveInternals, savePop],
+                            fmtStyle = "%8d %30.18e %30.18e") 
 
     def calcInternals(self, coords, internalName = None):
         if internalName == None:
@@ -245,10 +258,10 @@ class internals(observables):
         if ((self.internalName == None) and
             (internalName == None)):
             self.saveInternals(tmpCWD, interpFGintrnl, 1)
-        elif ((self.internalName == None) and
-            (internalName != None)):
-            self.saveInternals(tmpCWD, interpFGintrnl, 1,
-                               internalName = internalName)
+       # elif ((self.internalName == None) and
+       #     (internalName != None)):
+       #     self.saveInternals(tmpCWD, interpFGintrnl, 1,
+       #                        internalName = internalName)
         elif ((self.internalName != None) and
               (internalName == None)):
             self.saveInternals(tmpCWD, interpFGintrnl, 1, 
@@ -277,10 +290,10 @@ class internals(observables):
                 if ((self.internalName == None) and
                     (internalName == None)):
                         self.saveInternals(tmpCWD, interpCHintrnl, childID)
-                elif ((self.internalName == None) and
-                    (internalName != None)):
-                        self.saveInternals(tmpCWD, interpCHintrnl, childID,
-                                           internalName = internalName)
+       #         elif ((self.internalName == None) and
+       #             (internalName != None)):
+       #                 self.saveInternals(tmpCWD, interpCHintrnl, childID,
+       #                                    internalName = internalName)
                 elif ((self.internalName != None) and
                       (internalName == None)):
                     self.saveInternals(tmpCWD, interpFGintrnl, childID, 
@@ -447,95 +460,98 @@ class molpop(object):
                                            internalTime = equivInternalT)
                 self.addInternal(internal, tmpCWD)
 
-        meanBL = 0.
-        for intrnl in internal:
-            if self.prsr.AIMStype != "AIMS":
-                for rng in intrnl:
-                    for bond in rng:
-                        for spawn in bond:
-                            numSamples += spawn.size
-                            meanBL += np.sum(spawn)
-            else:
-                for bond in intrnl:
-                    for spawn in bond:
-                        numSamples += spawn.size
-                        meanBL += np.sum(spawn)
-
-        
-        meanBL = meanBL / numSamples
-        stdBL  = 0.
-        for intrnl in internal:
-            if self.prsr.AIMStype != "AIMS":
-                for rng in intrnl:
-                    for bond in rng:
-                        for spawn in bond:
-                            dev = spawn - meanBL
-                            stdBL += np.dot(dev, dev)
-            else:
-                for bond in intrnl:
-                    for spawn in bond:
-                        dev = spawn - meanBL
-                        stdBL += np.dot(dev, dev)
-
-        stdBL = np.sqrt(stdBL/(numSamples*(numSamples - 1)))
-        return meanBL + 2*stdBL, internal, internalTime
+        return internal, internalTime
 
     def addPopandBl(self, tmpTBFpops, geomTBFpop, geomBl, geomTime, internal,
-                    internalTime, thresh):
-        bondTBFpop = []
-        bondTime   = []
-        bondBl     = []
-        for iBond, bond in enumerate(internal):
-            spawnTBFpop = []
-            spawnBl     = []
-            spawnTime   = []
-            normalizer  = 0
-            for itmp, tmpTBFpop in enumerate(tmpTBFpops):
-                tmpTime =  internalTime[iBond][itmp]
-                ntmpTime, ntmpTBFpop = self.psFile.zeroPadArray(tmpTime,
-                                                                tmpTBFpop)
-                interpTBFpop = np.interp(self.prsr.interpTime, ntmpTime,
-                                         ntmpTBFpop)
-                normalizer += interpTBFpop
-            for iSpawn, spawn in enumerate(bond):
-                blTBFpop = []
-                blTime   = [] 
-                blBl     = [] 
-                for iBl, bl in enumerate(spawn):
-                    if bl > thresh:
-                        blBl.append(bl)
-                        if tmpTBFpops[iSpawn].size == 1:
-                            blTBFpop.append(tmpTBFpops[iSpawn])
-                            blTime.append(internalTime[iBond][iSpawn][0])
-                        else:
-                            blTBFpop.append(tmpTBFpops[iSpawn][iBl])
-                            blTime.append(internalTime[iBond][iSpawn][iBl])
-                if len(blBl) > 0:
-                    blBl = np.array(blBl)
-                    blTime = np.array(blTime)
-                    blTBFpop = np.array(blTBFpop) 
-                    # discard those bonds that recross the dissociation threshold  
-                    if blTime[-1] != internalTime[iBond][iSpawn][-1]:
-                        continue
-                    nBlTime, blTBFpop = self.psFile.zeroPadArray(blTime,
-                                                                 blTBFpop)
-                    blTBFpop = (np.interp(self.prsr.interpTime, nBlTime,
-                                blTBFpop) / normalizer)
-                    nBlTime, blBl = self.psFile.zeroPadArray(blTime, blBl)
-                    blBl = np.interp(self.prsr.interpTime, nBlTime, blBl)
-                    spawnTime.append(blTime[0])
-                    spawnTBFpop.append(blTBFpop)
-                    spawnBl.append(blBl)
-            if len(spawnBl) > 0:
-                bondBl.append(spawnBl)
-                bondTBFpop.append(spawnTBFpop)
-                bondTime.append(spawnTime)
-        geomBl.append(bondBl)
-        geomTBFpop.append(bondTBFpop)
-        geomTime.append(bondTime)
+                    internalTime):
+        """
+            Calculate means 
+        """ 
+        bondBlMean = []
+        normalizer = 0
+        #print(len(internal[0]), len(internal))
+        maxDisp = 0
+        maxBond = 0
+        maxBondSpawn = []
+        for i in np.arange(len(internal[0])):
+            spawnMean = 0 
+            for j in np.arange(len(internal)): 
+                currIntrnl = np.array(internal[j][i]) - internal[j][i][0] 
+                for k in currIntrnl:
+                    if k > maxDisp:
+                        maxDisp = k
+                        maxBond = j
+                spawnMean += currIntrnl 
+            maxBondSpawn.append(maxBond)
+            #print maxBondSpawn
+            spawnMean = spawnMean / len(internal)
+            bondBlMean.append(spawnMean)
 
-    def getPopandBl(self, geomTBFpop, geomBl, geomTime, internal, internalTime,
-                    thresh): 
+        bondTBFpop = []
+        bondTime = []
+        bondBl = []
+        for itmp, tmpTBFpop in enumerate(tmpTBFpops):
+            tmpTime =  internalTime[maxBond][itmp]
+            ntmpTime, ntmpTBFpop = self.psFile.zeroPadArray(tmpTime,
+                                                            tmpTBFpop)
+            interpTBFpop = np.interp(self.prsr.interpTime, ntmpTime,
+                                     ntmpTBFpop)
+            normalizer += interpTBFpop
+        for iSpawn, spawn in enumerate(internal[maxBond]):
+            blTBFpop = []
+            blTime   = [] 
+            blBl     = [] 
+            bl0 = spawn[0] 
+            for iBl, bl in enumerate(spawn):
+                disp = bl - bl0 
+                #if (disp > (bondBlMean[iSpawn][iBl] + self.prsr.thresh)):
+                #print disp, self.prsr.thresh, internalTime[maxBond][iSpawn][iBl], maxBond + 1, iSpawn + 1
+                if (disp > (self.prsr.thresh)):
+                    blBl.append(bl)
+                    if tmpTBFpops[iSpawn].size == 1:
+                        blTBFpop.append(tmpTBFpops[iSpawn])
+                        blTime.append(internalTime[maxBond][iSpawn][0])
+                    else:
+                        blTBFpop.append(tmpTBFpops[iSpawn][iBl])
+                        blTime.append(internalTime[maxBond][iSpawn][iBl])
+            if len(blBl) > 0:
+                blBl = np.array(blBl)
+                blTime = np.array(blTime)
+                blTBFpop = np.array(blTBFpop) 
+                # discard those bonds that recross the dissociation threshold  
+                if blTime[-1] != internalTime[maxBond][iSpawn][-1]:
+                    continue
+                nBlTime, blTBFpop = self.psFile.zeroPadArray(blTime,
+                                                             blTBFpop)
+                blTBFpop = (np.interp(self.prsr.interpTime, nBlTime,
+                            blTBFpop) / normalizer)
+                nBlTime, blBl = self.psFile.zeroPadArray(blTime, blBl)
+                blBl = np.interp(self.prsr.interpTime, nBlTime, blBl)
+                bondBl.append(blBl)
+                bondTBFpop.append(blTBFpop)
+                bondTime.append(nBlTime)
+        totPop = 0
+        for iPop, pop in enumerate(bondTBFpop):
+            timeOld = 0
+            for time in np.arange(pop.size):
+                if bondBl[iPop][time] > 0.0:
+                    timeNew =  self.prsr.interpTime[time]
+                    diff = timeNew - timeOld
+                    if  timeOld > 0.0 and diff > self.prsr.step: 
+                        print diff, timeOld, timeNew
+                    timeOld = timeNew
+            totPop += np.array(pop)
+        for i in np.arange(totPop.size):
+            if totPop[i] == 1.:
+                totPop[i:] = 1.
+                break 
+        geomBl.append(bondBl)
+        geomTBFpop.append(totPop)
+        geomTime.append(bondTime)
+        #print geomTime
+        
+
+    def getPopandBl(self, geomTBFpop, geomBl, geomTime, internal, internalTime): 
         TBFpops = self.psFile.getTBFpopulations(interp = False)
         ind = 0
         if hasattr(self.prsr, "sampleSize"):
@@ -549,48 +565,52 @@ class molpop(object):
                         tmpTBFpops    = TBFpops[ind][rng]
                         self.addPopandBl(tmpTBFpops, rngTBFpop, geomBl, 
                                          geomTime, internal[ind][rng], 
-                                         internalTime[ind][rng], thresh)
+                                         internalTime[ind][rng])
                     geomTBFpop.append(rngTBFpop)
                     ind += 1
                 else:
                     tmpTBFpops = TBFpops[ind]
                     self.addPopandBl(tmpTBFpops, geomTBFpop, geomBl, geomTime,
-                                     internal[ind], internalTime[ind], thresh)
-                    print(geom)
+                                     internal[ind], internalTime[ind])
+                    #print(geom)
                     ind += 1
             #print len(geomTBFpop)
 
-    def addGeomMolpop(self, geomMolpop, geomTBFpop):
-        if len(geomTBFpop) == 0:
-            geomMolpop.append(np.zeros(self.prsr.interpTime.size))   
-        else:
-            bondMolpops = []
-            numSamples = 0
-            for iBond, bond in enumerate(geomTBFpop):
-                #print bond
-                tmpBondMolpop = 0 
-                for iSpawn, spawn in enumerate(bond):
-                    tmpBondMolpop += spawn  
-                bondMolpops.append(tmpBondMolpop) 
-            if len(bondMolpops) > 1:
-                bondMolpop = np.zeros(self.prsr.interpTime.size) 
-                for itime in np.arange(self.prsr.interpTime.size):
-                    average = [] 
-                    for bond in bondMolpops: 
-                        if bond[itime] > 0.0:
-                            average.append(True)
-                        else:
-                            average.append(False)
-                    denominator = sum(average)
-                    for bond in bondMolpops:
-                        if denominator == 0:
-                            bondMolpop[itime] += bond[itime]
-                        else:
-                            bondMolpop[itime] += bond[itime]/denominator
-                            
-            else:
-                bondMolpop = tmpBondMolpop 
-            geomMolpop.append(bondMolpop)
+    #def addGeomMolpop(self, geomMolpop, geomTBFpop):
+    #    if len(geomTBFpop) == 0:
+    #        geomMolpop.append(np.zeros(self.prsr.interpTime.size))   
+    #    else:
+    #        bondMolpops = []
+    #        numSamples = 0
+    #        for iBond, bond in enumerate(geomTBFpop):
+    #            #print bond
+    #            tmpBondMolpop = 0 
+    #            for iSpawn, spawn in enumerate(bond):
+    #                tmpBondMolpop += spawn  
+    #            bondMolpops.append(tmpBondMolpop) 
+    #        if len(bondMolpops) > 1:
+    #            #print "more than one"
+    #            #print bondMolpops
+    #            bondMolpop = np.zeros(self.prsr.interpTime.size) 
+    #            for itime in np.arange(self.prsr.interpTime.size):
+    #                average = [] 
+    #                for bond in bondMolpops: 
+    #                    if bond[itime] > 0.0:
+    #                        average.append(True)
+    #                    else:
+    #                        average.append(False)
+    #                denominator = sum(average)
+    #                for bond in bondMolpops:
+    #                    if denominator == 0:
+    #                        bondMolpop[itime] += bond[itime]
+    #                    #bondMolpop[itime] += bond[itime]
+    #                    else:
+    #                        bondMolpop[itime] += bond[itime]/denominator
+    #                        
+    #        else:
+    #            #print "just one"
+    #            bondMolpop = tmpBondMolpop 
+    #        geomMolpop.append(bondMolpop)
 
     def getGeomMolpop(self, geomMolpop, geomTBFpop, geomBl):
         #print(len(geomTBFpop))
@@ -602,37 +622,52 @@ class molpop(object):
                 if self.prsr.AIMStype != "AIMS":
                     for rng in np.arange(self.prsr.nrRNGs):
                         #print len(geomTBFpop[geom][rng])
-                        self.addGeomMolpop(geomMolpop, geomTBFpop[geom][rng])
+                        geomMolpop.append(geomTBFpop[geom][rng])
                 else:
-                    self.addGeomMolpop(geomMolpop, geomTBFpop[geom])
+                    geomMolpop.append(geomTBFpop[geom])
 
     def globalExpec(self,internal,internalTime):
         equivalentBonds = self.getEquivalentBonds()
         numEquivBonds   = len(equivalentBonds)
-        print numEquivBonds
+        #print numEquivBonds
         TBFpops = self.psFile.getTBFpopulations()
+        TBFpopsN = self.psFile.getTBFpopulations(interp=False)
         samples = []
         for geom in np.arange(self.prsr.sampleSize):
             for bond in np.arange(numEquivBonds):
                 if self.prsr.AIMStype != "AIMS":
                     for rng in np.arange(self.prsr.nrRNGs):
+                        tmpCWD = self.CWD + "/" + self.prsr.RNGdir + str(rng+1)  
+                        tmpCWD += "/" + self.prsr.geomDir + str(geom+1)
                         tmpInternals = []
                         for spawn in np.arange(len(internal[geom][rng][bond])):
+                            #if (spawn + 1) == len(internal[geom][rng][bond]):
+                            #    print geom+1, rng+1, spawn+1
+                            #    print TBFpops[geom][rng] 
                             tmpInternal = np.interp(self.prsr.interpTime,  
                                     internalTime[geom][rng][bond][spawn],
                                     internal[geom][rng][bond][spawn])  
                             tmpInternals.append(tmpInternal)
+                            self.internals.saveInternals(tmpCWD, internal[geom][rng][bond][spawn], spawn+1,
+                                                         internalName = equivalentBonds[bond],
+                                                         popTBF = TBFpopsN[geom][rng][spawn],
+                                                         time = internalTime[geom][rng][bond][spawn])
                         sample = self.internals.calcIncoherentSum(
-                                                TBFpops[geom][rng],
-                                                tmpInternals)
+                                                    TBFpops[geom][rng],
+                                                    tmpInternals)
                         samples.append(sample)
                 else:
                     tmpInternals = []
+                    tmpCWD = self.CWD + "/" + self.prsr.geomDir + str(geom+1)
                     for spawn in np.arange(len(internal[geom][bond])):
                         tmpInternal = np.interp(self.prsr.interpTime,  
                                      internalTime[geom][bond][spawn],
                                      internal[geom][bond][spawn])  
                         tmpInternals.append(tmpInternal)
+                        self.internals.saveInternals(tmpCWD, internal[geom][bond][spawn], spawn+1,
+                                                     internalName = equivalentBonds[bond],
+                                                     popTBF = TBFpopsN[geom][spawn],
+                                                     time = internalTime[geom][bond][spawn])
                     sample = self.internals.calcIncoherentSum(
                                                  TBFpops[geom],
                                                   tmpInternals)
@@ -654,19 +689,19 @@ class molpop(object):
                     fmtStyle = "%8d %30.18e %30.18e")
 
     def getMolpop(self):
-        thresh, internal, internalTime = self.calculateDissociationThresh()
+        internal, internalTime = self.calculateDissociationThresh()
+        self.globalExpec(internal,internalTime)
         geomTBFpop = [] 
         geomBl     = []
         geomTime   = []
-        self.getPopandBl(geomTBFpop, geomBl, geomTime, internal, internalTime,
-                         thresh)
+        self.getPopandBl(geomTBFpop, geomBl, geomTime, internal, internalTime)
         geomMolpop = []
         self.getGeomMolpop(geomMolpop, geomTBFpop, geomBl)
         mean = 0 
         for i in geomMolpop:
-            mean += i 
+            #print i
+            mean += i
         mean = mean / len(geomMolpop)
-        #print len(geomMolpop)
         sd = 0 
         for i in geomMolpop:
             sd += (i - mean)**2 
@@ -678,4 +713,3 @@ class molpop(object):
         saveFile = "N_UNDISS_" + self.prsr.AIMStype + ".dat"
         writeNPFile(3, saveFile, [self.prsr.interpTime, 1 - mean, sd], 
                     fmtStyle = "%8d %30.18e %30.18e")
-        self.globalExpec(internal,internalTime)

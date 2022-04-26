@@ -1,9 +1,14 @@
 #!/usr/local/Cluster-Apps/python/2.7.9/bin/python
 import numpy as np
+from matplotlib import pyplot as plt
 import os
+from matplotlib import cm
+import matplotlib as mpl
+import math
 from filesys import *
 from misc import *
 from parse import *
+from aimsinp import *
 
 def initParser(parser):
     parser.addInput("pckg", "Which AIMS interface was used?")
@@ -42,6 +47,7 @@ def initParser(parser):
     elif "molpop" in parser.todo:
         parser.addInput("internalType", "Which kind of internal is it?")
         parser.addInput("dissPartners", "Which kind of internal is it?")
+        parser.addInput("thresh", "Which kind of internal is it?")
         assert (hasattr(parser, "internalType") and hasattr(parser, "dissPartners")) 
     if "coupling" in parser.todo:
         parser.addInput("couplingType", "What type of effective nac was used?")

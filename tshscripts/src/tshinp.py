@@ -38,6 +38,7 @@ def initParser(parser):
     elif "molpop" in parser.todo:
         parser.addInput("internalType", "Which kind of internal is it?")
         parser.addInput("dissPartners", "Which kind of internal is it?")
+        parser.addInput("thresh", "test")
         assert (hasattr(parser, "internalType") and hasattr(parser, "dissPartners")) 
     if "coupling" in parser.todo:
         parser.addInput("couplingType", "What type of effective nac was used?")
