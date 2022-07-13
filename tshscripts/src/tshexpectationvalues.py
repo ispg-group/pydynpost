@@ -95,12 +95,10 @@ class molpop(object):
         internalTime = []
         numSamples = 0
         if hasattr(self.prsr, "sampleSize"): 
-            for geom in np.arange(self.prsr.sampleSize):
+            for geom in np.arange(self.prsr.sampleSize
+                                  -len(self.prsr.dupList)):
                 geomInternal  = []
                 geomInternalT = []
-                if geom in self.prsr.dupList:
-                    #print geom
-                    continue
                 if not(self.prsr.nrRNGs == 0):
                     for rng in np.arange(self.prsr.nrRNGs):
                         rngInternal  = []
@@ -146,18 +144,16 @@ class molpop(object):
 
     def calculateMolpop(self, internal, internalTime):
         numDissoc = np.zeros(self.prsr.interpTime.size) 
-        for geom in np.arange(self.prsr.sampleSize):
-            if geom in self.prsr.dupList:
-                #print geom
-                continue
+        for geom in np.arange(self.prsr.sampleSize
+                              -len(self.prsr.dupList)):
             if not(self.prsr.nrRNGs == 0):
                 for rng in np.arange(self.prsr.nrRNGs):
-                    dispMean = 0
-                    for i in np.arange(len(internal[geom][rng])):
-                        currIntrnl = np.array(internal[geom][rng][i]) 
-                        currIntrnl -= internal[geom][rng][i][0]
-                        dispMean += currIntrnl
-                    dispMean = dispMean / len(internal[geom][rng])
+                    #dispMean = 0
+                    #for i in np.arange(len(internal[geom][rng])):
+                    #    currIntrnl = np.array(internal[geom][rng][i]) 
+                    #    currIntrnl -= internal[geom][rng][i][0]
+                    #    dispMean += currIntrnl
+                    #dispMean = dispMean / len(internal[geom][rng])
                     maxDisp = 0 
                     maxBond = 0
                     for bond in np.arange(len(internal[geom][rng])):
@@ -170,10 +166,10 @@ class molpop(object):
                         for iBl, bl in enumerate(tmpInternal): 
                             disp = bl - bl0 
                             #print bond, disp, dispMean[iBl] + self.prsr.thresh, tmpInternalTime[iBl]
-                            if (disp > dispMean[iBl] + self.prsr.thresh):
-                                if disp > maxDisp:
-                                    maxBond = bond 
-                                    maxDisp = disp
+                            #if (disp > dispMean[iBl] + self.prsr.thresh):
+                            if disp > maxDisp:
+                                maxBond = bond 
+                                maxDisp = disp
 
                     #print maxDisp, maxBond+1, rng+1, geom+1
                     maxInternal = internal[geom][rng][maxBond] 

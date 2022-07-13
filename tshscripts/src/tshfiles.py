@@ -72,6 +72,14 @@ class processFiles(object):
         return positions
 
 class processFilesABIN(processFiles):
+    def readInitState(self, fileName):
+        with open(fileName + 'abin.out', 'r') as initLines:
+            for initLine in initLines:
+                if 'ISTATE_INIT' in initLine: 
+                    initState = int(initLine.strip().split()[-1][:-1])
+
+        return initState
+        
     def readCurrentStates(self): 
         fileNameRt = "pop.dat"
         currentStates = []
@@ -84,14 +92,20 @@ class processFilesABIN(processFiles):
                 for rng in np.arange(1, self.prsr.nrRNGs + 1):
                     currFileName  = self.CWD + "/" + self.prsr.RNGdir 
                     currFileName += str(rng) + "/" + self.prsr.geomDir 
-                    currFileName += str(geom) + "/" + fileNameRt
+                    currFileName += str(geom) + "/" 
+                    initState = self.readInitState(currFileName)
+                    currFileName += fileNameRt
                     currDat   = np.genfromtxt(currFileName)
-                    currTime  = currDat[:,0]
-                    currState = currDat[:,1] 
+                    tmpCurrTime  = currDat[:,0]
+                    tmpCurrState = currDat[:,1] 
+                    currState = np.zeros(tmpCurrState.size + 1)
+                    currTime = np.zeros(tmpCurrState.size + 1)
+                    currState[0] = initState
+                    currState[1:] = tmpCurrState
+                    currTime[0] = 0.0
+                    currTime[1:] = tmpCurrTime
                     currState = currState[currTime <= self.prsr.maxTime]
-                    currTime  = currTime[currTime <= self.prsr.maxTime]
-                    #interpCurrState = np.interp(self.prsr.interpTime, 
-                    #                            currTime, currState) 
+                    currTime = currTime[currTime <= self.prsr.maxTime]
                     geomCurrentStates.append(currState)
                 currentStates.append(geomCurrentStates)
                      
@@ -108,14 +122,19 @@ class processFilesABIN(processFiles):
                 currentStates.append(currState)
         return currentStates
                 
+    def readInitStPop(self, fileName):
+        initStatePop = np.zeros(self.prsr.nrStates)
+        initState = self.readInitState(fileName)
+        initStatePop[initState-1] = 1.0
+        return initStatePop
 
     def readStatePopulations(self): 
         fileNameRt = "pop.dat"
-        statePopulation = []
-        time = []
+        #statePopulation = []
+        #time = []
+        geomStatePopulation = []
+        geomTime = []
         for geom in np.arange(1, self.prsr.sampleSize + 1):
-            geomStatePopulation = []
-            geomTime = []
             if geom in self.prsr.dupList:
                 continue
             if self.prsr.nrRNGs != 0: 
@@ -123,41 +142,56 @@ class processFilesABIN(processFiles):
                 for rng in np.arange(1, self.prsr.nrRNGs + 1):
                     currFileName  = self.CWD + "/" + self.prsr.RNGdir 
                     currFileName += str(rng) + "/" + self.prsr.geomDir 
-                    currFileName += str(geom) + "/" + fileNameRt
+                    currFileName += str(geom) + "/" 
+                    initStPop = self.readInitStPop(currFileName) 
+                    currFileName += fileNameRt
                     currDat   = np.genfromtxt(currFileName)
-                    currTime  = currDat[:,0]
+                    tmpCurrTime  = currDat[:,0]
+                    currTime = np.zeros(tmpCurrTime.size + 1)  
+                    currTime[0] = 0.0
+                    currTime[1:] = tmpCurrTime
+                    indStatePop = []
                     for state in np.arange(2,self.prsr.nrStates+2):
-                        currStatePop = currDat[:, state] 
+                        tmpCurrStatePop = currDat[:, state] 
                         #interpCurrStatePop = np.interp(self.prsr.interpTime, 
                         #                               currTime, currStatePop) 
+                        currStatePop = np.zeros(tmpCurrStatePop.size + 1) 
+                        currStatePop[0] = initStPop[state-2]   
+                        currStatePop[1:] = tmpCurrStatePop  
                         currStatePop = currStatePop[currTime <= self.prsr.maxTime]
+                        indStatePop.append(currStatePop)
                         #print "pop", currStatePop.size
-                        rngStatePopulation.append(currStatePop)
-                    geomStatePopulation.append(rngStatePopulation)
-                    currTime  = currTime[currTime <= self.prsr.maxTime]
-                    #print "time", currTime.size
-                    geomTime.append(currTime)
-                statePopulation.append(geomStatePopulation)
-                time.append(geomTime)
+                        #if len(geomStatePopulation) > 0:
+                        #    print currStatePop - geomStatePopulation[-1][state-2]  
+                    #rngStatePopulation.append(currStatePop)
+                    rngStatePopulation.append(indStatePop)
+                geomStatePopulation.append(rngStatePopulation)
+                currTime  = currTime[currTime <= self.prsr.maxTime]
+                #print "time", currTime.size
+                geomTime.append(currTime)
+#                statePopulation.append(geomStatePopulation)
+#                time.append(geomTime)
                      
             else:
                 currFileName  = self.CWD + "/" + self.prsr.geomDir 
                 currFileName += str(geom) + "/" + fileNameRt 
                 currDat   = np.genfromtxt(currFileName)
                 currTime  = currDat[:,0]
+                indStatePop = []
                 for state in np.arange(2,self.prsr.nrStates+2):
                     currStatePop = currDat[:, state] 
                     #interpCurrStatePop = np.interp(self.prsr.interpTime, 
                     #                               currTime, currStatePop) 
                     currStatePop = currStatePop[currTime <= self.prsr.maxTime]
-                    geomStatePopulation.append(currStatePop)
-                statePopulation.append(geomStatePopulation)
-                currTime  = currTime[currTime <= self.prsr.maxTime]
-                #print currTime.size
-                time.append(currTime)
+                    indStatePop.append(currStatePop)
+                geomStatePopulation.append(currStatePop)
+                #statePopulation.append(geomStatePopulation)
+                #currTime  = currTime[currTime <= self.prsr.maxTime]
+                ##print currTime.size
+                geomTime.append(currTime)
                 
                 
-        return statePopulation, time
+        return geomStatePopulation, geomTime
 
     def addInitGeom(self, initFileName, nrAtoms):
         with open(initFileName, "r") as initGLines:
