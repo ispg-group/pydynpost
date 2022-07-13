@@ -14,6 +14,8 @@ from parse import *
 from aimsinp import *
 from aimssave import *
 from internals import *
+b2A = 0.529177249
+A2b = 1./b2A
 
 class observables(object):
     """
@@ -31,7 +33,9 @@ class observables(object):
         self.psFile = psFile
 
     def calcIncoherentSum(self, TBFpops, observable): 
-        # It simply do what it do!
+        """
+             It simply do what it do!
+        """
         incoherentSum = np.zeros(TBFpops[0].size)
         numerator     = np.zeros(TBFpops[0].size)
         denominator   = np.zeros(TBFpops[0].size)
@@ -45,18 +49,40 @@ class observables(object):
 
     @abc.abstractmethod
     def getRAWObservable(self): 
+        """ 
+            This function has to be implemented by all derived 
+            classes. The result is needed to calculate the 
+            incoherent sum step of the general getExpectationValue 
+            method.
+        """
         pass
 
-    def getExpectationValue(self, saveStringParams, internalName = None):
+    @abc.abstractmethod
+    def calcRAWObservable(self, molStruct):
+        """ 
+            This function has to be implemented by all derived 
+            classes. The result is needed to calculate the coherent
+            sum via monte carlo integration
+        """
+        pass
+
+    def getIncoherentExpectationValue(self, saveStringParams, expecName = None):
+        """
+            This method is the heart of the expectationvalue class.
+            It expects the getRAWObservable function to be implemented.
+        """
         expecObservable = np.zeros(self.prsr.interpTime.size) 
         TBFpops   = self.psFile.getTBFpopulations()
         rawObservable = self.getRAWObservable()
+        # The following list contains the expectation value
+        # calculated via the incoherent sum method for each IC.
+        # If multiple runs have to be done it will be a list of
+        # lists containing the expectation value for each run.  
         geomExpects = []
         ind = 0 
         if hasattr(self.prsr, "sampleSize"):
             for geom in np.arange(1, self.prsr.sampleSize + 1):
                 if geom in self.prsr.dupList:
-                    #print geom
                     continue
                 if self.prsr.AIMStype != "AIMS":
                     geomExpecObservable = np.zeros(self.prsr.interpTime.size)
@@ -70,15 +96,13 @@ class observables(object):
                         geomExpects.append(tmpExpect)
                         expecObservable += tmpExpect
                         geomExpecObservable += tmpExpect
-                        #tmpCWD  = self.CWD + "/rng" + str(rng + 1) + "/geom_" 
                         tmpCWD  = self.CWD + "/" + self.prsr.RNGdir + str(rng + 1)  
-                        #tmpCWD += str(geom + 1)
-                        tmpCWD += "/" + self.prsr.geomDir + str(geom + 1)
+                        tmpCWD += "/" + self.prsr.geomDir + str(geom)
                         saveString = ""
                         for saveStringParam in saveStringParams: 
                             saveString += saveStringParam 
-                        if not(internalName == None):
-                            saveString += internalName[ind]
+                        if not(expecName == None):
+                            saveString += expecName[ind]
                         saveString += ".dat" 
                         saveFile   = self.psFile.inputFileName(tmpCWD, saveString) 
                         writeNPFile(2, saveFile, [self.prsr.interpTime, tmpExpect],
@@ -96,8 +120,7 @@ class observables(object):
                     saveString = "" 
                     for saveStringParam in saveStringParams:
                         saveString += saveStringParam
-                    saveString += "_IC" + str(geom + 1) + "_" + str(rng + 1)
-                    saveString += ".dat"
+                    saveString += "_IC" + str(geom) + ".dat"
                     saveFile   = self.psFile.inputFileName(tmpCWD, saveString) 
                     writeNPFile(3, saveFile, [self.prsr.interpTime, 
                                               geomExpecObservable,
@@ -112,43 +135,33 @@ class observables(object):
                                                            tmpObservable)
                     expecObservable += tmpExpect
                     geomExpects.append(tmpExpect)
-                    #tmpCWD = self.CWD + "/geom_" + str(geom + 1)
                     tmpCWD = self.CWD + "/" + self.prsr.geomDir + str(geom)
                     saveString  = "" 
                     for saveStringParam in saveStringParams:
                         saveString += saveStringParam
-                    if not(internalName == None):
-                        saveString += internalName[ind]
                     saveString += ".dat"
-                    #print tmpCWD, saveString
                     saveFile    = self.psFile.inputFileName(tmpCWD, saveString)
                     writeNPFile(2, saveFile, [self.prsr.interpTime, tmpExpect],
                                 fmtStyle = "%8d %30.18e")
 
+            saveFile = self.CWD + "/" 
+            for saveStringParam in saveStringParams:
+                saveFile += saveStringParam
+
             if self.prsr.AIMStype == "AIMS":
-                Nsamples = self.prsr.sampleSize - len(self.prsr.dupList)
-                if hasattr(self.prsr, "internalName"):
-                    saveFile  = self.CWD + "/" + self.prsr.internalType 
-                    saveFile += self.prsr.internalName 
-                else:
-                    saveFile = self.CWD + "/" + self.prsr.internalType 
+                nrSamples = self.prsr.sampleSize - len(self.prsr.dupList)
                 saveFile += "_AIMS.dat"
             else:
-                Nsamples  = (self.prsr.sampleSize - len(self.prsr.dupList)) 
-                Nsamples *= self.prsr.nrRNGs
-                if hasattr(self.prsr, "internalName"):
-                    saveFile  = self.CWD + "/" + self.prsr.internalType
-                    saveFile += self.prsr.internalName
-                else:
-                    saveFile = self.CWD + "/" + self.prsr.internalType
+                nrSamples  = (self.prsr.sampleSize - len(self.prsr.dupList)) 
+                nrSsamples *= self.prsr.nrRNGs
                 saveFile += "_" + self.prsr.AIMStype + "_" 
                 saveFile += str(self.prsr.nrRNGs) + ".dat"
-            expecObservable = expecObservable / Nsamples
+            expecObservable = expecObservable / nrSamples
             stdErrObservable = np.zeros(expecObservable.size)
             for i in np.arange(len(geomExpects)):
                 stdErrObservable += (geomExpects[i] - expecObservable)**2
-            stdErrObservable = np.sqrt(stdErrObservable / (Nsamples * 
-                               (Nsamples + 1)))
+            stdErrObservable = np.sqrt(stdErrObservable / (nrSamples * 
+                               (nrSamples + 1)))
             writeNPFile(3, saveFile, [self.prsr.interpTime, expecObservable,
                                       stdErrObservable], 
                         fmtStyle = "%8d %30.18e %30.18e")
@@ -163,23 +176,438 @@ class observables(object):
             writeNPFile(2, saveFile, [self.prsr.interpTime, expecObservable],
                         fmtStyle = "%8d %30.18e")
 
+    def interpTraj(self, traj, numParticles):
+        time = []
+        for snapshot in traj: 
+            time.append(snapshot[0])
+        interpCoords = []
+        for j in np.arange(numParticles):
+            for i in np.arange(3):
+                currCoord = []
+                for snapshot in traj: 
+                    #print len(snapshot[1])
+                    currCoord.append(snapshot[1][j][i])
+                interpCurrCoord = np.interp(self.prsr.interpTime, 
+                                            time, currCoord).tolist()
+                interpCoords.append(interpCurrCoord) 
+
+        newTraj = [] 
+        for i in np.arange(self.prsr.interpTime.size):
+            currTraj = []
+            for j in np.arange(0,len(interpCoords)-2,3): 
+                currTraj.append([interpCoords[j][i],
+                                 interpCoords[j+1][i],
+                                 interpCoords[j+2][i]])
+            newTraj.append(currTraj)
+                
+        return newTraj
+
+    def sampleGeometry(self, TBFcoord, widths, atmNames, rng):
+        randCoord = []  
+        for i, coord in enumerate(TBFcoord):
+            tmpRandCoord = [atmNames[i]]
+            sigma = np.sqrt(1/(4 * widths[i])) 
+            #print coord
+            for tmpCoord in coord:
+                if np.abs(tmpCoord) <= 1.e-12:
+                    tmpRandCoord.append(0.0)    
+                    continue
+                tmpRandCoord.append(rng.normal(loc=tmpCoord,
+                                               scale=sigma))
+            randCoord.append(tmpRandCoord)
+        return randCoord
+
+    def getBox(self, rngInternal):
+        for iBox, box in enumerate(self.prsr.boxes):
+            if ((box[0] <= rngInternal) and 
+                (rngInternal < box[1])):
+                break
+        else:
+            if (rngInternal < box[0]):
+                iBox = -1
+            elif (rngInternal >= box[-1]):
+                iBox = self.prsr.nrBoxes
+
+        return iBox
+
+    def calcGaussianDensity(self, RNGcoord, TBFcoord, widths):
+        exponent = 0
+        prefactor = 1
+        for i, coord in enumerate(TBFcoord):
+            alpha = widths[i]  
+
+            for j, tmpCoord in enumerate(coord):
+                if ((self.prsr.internalType == "X") or
+                    (self.prsr.internalType == "Y")):
+                    if j > 0:
+                        continue
+                exponent -= 2 * alpha * (tmpCoord - RNGcoord[i][j+1])**2
+                prefactor *= np.sqrt(2 * alpha / np.pi)
+        gaussianDensity = prefactor * np.exp(exponent)
+        return gaussianDensity
+
+    def calcComplexGaussian(self, RNGcoord, TBFcoord, TBFmom, 
+                            TBFphase, widths):
+        exponent = 0
+        prefactor = np.exp(-1.0j * TBFphase)
+        for i, coord in enumerate(TBFcoord):
+            alpha = widths[i]  
+
+            for j, tmpCoord in enumerate(coord):
+                if ((self.prsr.internalType == "X") or
+                    (self.prsr.internalType == "Y")):
+                    if j > 0:
+                        continue
+                exponent -= alpha * (tmpCoord - RNGcoord[i][j+1])**2
+                exponent += 1.0j * TBFmom[i][j] * (tmpCoord - RNGcoord[i][j+1])
+                prefactor *= np.power(2 * alpha / np.pi, 0.25)
+        complexGaussian = prefactor * np.exp(exponent)
+        return complexGaussian
+
+    def addDensity(self, t, currDensity, currDensity2, 
+                   rngCoord, TBFcoord, TBFmom, TBFphase, 
+                   TBFpop, TBFamp, TBFstt, widths):
+
+        support = 0
+        density = 0
+        for iTBF, pop in enumerate(TBFpop):
+            if pop[t] > 1.e-12:
+                tmpGaussDensity = self.calcGaussianDensity(rngCoord,
+                                                           TBFcoord[iTBF][t],
+                                                           widths)
+                support += pop[t] * tmpGaussDensity
+                density += pop[t] * tmpGaussDensity
+                for jTBF in np.arange(iTBF+1, len(TBFpop)):
+                    if ((TBFstt[iTBF] == TBFstt[jTBF]) and
+                       (TBFpop[jTBF][t] > 1.e-12)):
+                        chiI = self.calcComplexGaussian(rngCoord,
+                                                        TBFcoord[iTBF][t],
+                                                        TBFmom[iTBF][t],
+                                                        TBFphase[iTBF][t],
+                                                        widths)
+                        chiJ = self.calcComplexGaussian(rngCoord,
+                                                        TBFcoord[jTBF][t],
+                                                        TBFmom[jTBF][t],
+                                                        TBFphase[jTBF][t],
+                                                        widths)
+                        addTerm = np.conj(TBFamp[iTBF][t] * chiI) 
+                        addTerm *= TBFamp[jTBF][t] * chiJ
+                        density += 2 * np.real(addTerm)
+
+        newDensity = currDensity + density/support
+        newDensity2 = currDensity2 + (density/support)**2
+        return newDensity, newDensity2
+
+    def importanceSampling(self, currCWD, t, TBFcoord, TBFmom, 
+                           TBFphase, TBFpop, TBFamp, TBFstt,
+                           widths, atmNames):
+        if hasattr(self.prsr, "IRandSeed"):
+            rng = np.random.RandomState(self.prsr.IRandSeed)
+        else:
+            rng = np.random.RandomState()
+
+        meanOld = np.zeros(self.prsr.nrBoxes) 
+        stderrOld = np.zeros(self.prsr.nrBoxes) 
+        bOld = 0
+        meanNew = np.zeros(self.prsr.nrBoxes) 
+        stderrNew = np.zeros(self.prsr.nrBoxes) 
+        bNew = 0
+        nrSamples = 0
+        nrFldTriesBlw = 0
+        nrFldTriesAbv = 0
+        failed = False
+        density = np.zeros(self.prsr.nrBoxes)
+        density2 = np.zeros(self.prsr.nrBoxes)
+        #densitySamples = []
+        #for iB in np.arange(self.prsr.nrBoxes): 
+        #    densitySamples.append([])
+
+        while True:
+            meanOld = meanNew.copy()
+            stderrOld = stderrNew.copy()
+            bOld = bNew
+            eta = rng.uniform(0,1)
+            cumProb = 0 
+
+            for iTBF, pop in enumerate(TBFpop):
+                cumProb += pop[t] 
+                if eta <= cumProb:
+                    rngCoord = self.sampleGeometry(TBFcoord[iTBF][t],widths,
+                                                   atmNames,rng) 
+                    rngInternal = self.calcRAWObservable(rngCoord)
+                    b = self.getBox(rngInternal)
+                    if b == -1:
+                        nrFldTriesBlw += 1
+                        failed = True
+                        break
+                    if b == self.prsr.nrBoxes:
+                        nrFldTriesAbv += 1
+                        failed = True
+                        break
+                    density[b], density2[b] = self.addDensity(
+                                              t, density[b],
+                                              density2[b],
+                                              rngCoord, TBFcoord,
+                                              TBFmom, TBFphase,
+                                              TBFpop, TBFamp,
+                                              TBFstt, widths
+                                              )
+                    nrSamples += 1
+                    bNew = b
+                    break
+
+            if not(failed):
+                meanNew = density / nrSamples
+                stderrNew = np.sqrt(density2 / nrSamples - meanNew**2)
+                    
+                if nrSamples > 1:
+                    changeDens  = np.linalg.norm(meanNew - meanOld)
+                    changeDens /= np.linalg.norm(meanOld)
+                    if ((changeDens < self.prsr.densThresh) and
+                        not(bNew == bOld)):
+                        break
+            else:
+                failed = False
+
+        boxsize = self.prsr.boxes[0][1] - self.prsr.boxes[0][0]
+        summ = 0
+        for i in np.arange(self.prsr.boxes.shape[0]):
+            summ += meanNew[i] 
+
+        assert abs(summ - 1.0) <= 1.e-12
+        #print summ
+        finalDensity = []
+        for iBox, box in enumerate(self.prsr.boxes):
+            for limit in box:
+                finalDensity.append(meanNew[iBox]) 
+
+        #finalDensity = np.array(finalDensity)
+        #xaxis = self.prsr.boxes.flatten()
+        #saveFile = 'redDens_' + str(t) + '.dat'
+        #writeNPFile(2, saveFile, [xaxis, finalDensity], 
+        #            fmtStyle = "%30.18e %30.18e") 
+        #print nrSamples + nrFldTriesBlw + nrFldTriesAbv
+        return finalDensity
+
+    def calcOverlap(self, xi, xj, pi, pj, gammaI, gammaJ, 
+                    alpha):
+        prefactor = np.power(2 * alpha, 0.25)
+        deltaXij = xi - xj 
+        deltaPij = pi - pj 
+        real = -0.5 * alpha * deltaXij**2  
+        real -= (1./8.) * (deltaPij**2/alpha)
+        centroid = (xi + xj) / 2.
+        imag = (pi*xi - pj*xj) - centroid * deltaPij
+        imag += gammaJ - gammaI
+        exponent = real + 1.j * imag
+        overlap = prefactor * np.exp(exponent)
+        return overlap
+             
+    def calcExactDensity(self, currCWD, t, TBFcoord, TBFmom, 
+                         TBFphase, TBFpop, TBFamp, TBFstt,
+                         widths, atmNames, maxDens):
+
+        xaxis = self.prsr.boxes.flatten()
+        exactDens = np.zeros(xaxis.size)
+        for iX, x in enumerate(xaxis):
+            for iTBF, ampI in enumerate(TBFamp):
+                for jTBF in np.arange(iTBF,len(TBFamp)):
+                    if self.prsr.internalType == "X":
+                        currCoord = [['QQ1', x, 0.0, 0.0]]
+                    elif self.prsr.internalType == "Y":
+                        currCoord = [['PP2', x, 0.0, 0.0]]
+
+                    if iTBF == jTBF:
+                        if self.prsr.internalType == "X":
+                            tmpCoord = [TBFcoord[iTBF][t][0]]
+                            tmpWidths = [widths[0]]
+                        elif self.prsr.internalType == "Y":
+                            tmpCoord = [TBFcoord[iTBF][t][1]]
+                            tmpWidths = [widths[1]]
+                        gaussianDensity = self.calcGaussianDensity(
+                                                         currCoord,
+                                                         tmpCoord,
+                                                         widths
+                                                         )
+                        exactDens[iX] += TBFpop[iTBF][t] * gaussianDensity 
+                    else:
+                        if not(TBFstt[iTBF] == TBFstt[jTBF]):
+                            continue
+                        widthX = widths[0]
+                        widthY = widths[1]
+                        if self.prsr.internalType == "X":
+                            overlap = self.calcOverlap(
+                                      TBFcoord[iTBF][t][1][0],
+                                      TBFcoord[jTBF][t][1][0],
+                                      TBFmom[iTBF][t][1][0],
+                                      TBFmom[jTBF][t][1][0],
+                                      TBFphase[iTBF][t],
+                                      TBFphase[jTBF][t],
+                                      widthY
+                                      ) 
+                            chiI = self.calcComplexGaussian(
+                                   currCoord,
+                                   [TBFcoord[iTBF][t][0]],
+                                   [TBFmom[iTBF][t][0]],
+                                   TBFphase[iTBF][t],
+                                   [widthX]
+                                   )
+                            chiJ = self.calcComplexGaussian(
+                                   currCoord,
+                                   [TBFcoord[jTBF][t][0]],
+                                   [TBFmom[jTBF][t][0]],
+                                   TBFphase[jTBF][t],
+                                   [widthX]
+                                   )
+                            
+                        elif self.prsr.internalType == "Y":
+                            overlap = self.calcOverlap(
+                                      TBFcoord[iTBF][t][0][0],
+                                      TBFcoord[jTBF][t][0][0],
+                                      TBFmom[iTBF][t][0][0],
+                                      TBFmom[jTBF][t][0][0],
+                                      TBFphase[iTBF][t],
+                                      TBFphase[jTBF][t],
+                                      widthX
+                                      ) 
+                            chiI = self.calcComplexGaussian(
+                                   currCoord,
+                                   [TBFcoord[iTBF][t][1]],
+                                   [TBFmom[iTBF][t][1]],
+                                   TBFphase[iTBF][t],
+                                   [widthY]
+                                   )
+                            chiJ = self.calcComplexGaussian(
+                                   currCoord,
+                                   [TBFcoord[jTBF][t][1]],
+                                   [TBFmom[jTBF][t][1]],
+                                   TBFphase[jTBF][t],
+                                   [widthY]
+                                   )
+                        addTerm = np.conj(TBFamp[iTBF][t]) * TBFamp[iTBF][t] 
+                        addTerm *= overlap * np.conj(chiI) * chiJ
+                        addTerm = 2 * np.real(addTerm)
+                        exactDens[iX] += addTerm
+
+        saveFile = 'exactRedDens_' + str(t) + '.dat'
+        #exactDens = exactDens * maxDens / np.amax(exactDens)
+        writeNPFile(2, saveFile, [xaxis, exactDens], 
+                    fmtStyle = "%30.18e %30.18e") 
+            
+        return exactDens
+                         
+                        
+
+    def getCoherentExpectationValue(self, saveStringParams, expecName = None):
+        if hasattr(self.prsr, "sampleSize"):
+            pass
+        else:
+            tmpCWD = self.CWD 
+            numParticles = self.psFile.findNumAtoms(tmpCWD)
+            spawnTimes, childIDs, parentIDs, numSpawns = self.psFile.findNrSpawns(tmpCWD)
+            posErr, FGcoord = self.psFile.readPositions(1,tmpCWD,numParticles,
+                                                        addAtmNames=False, bohr=True)
+            FGcoord = self.interpTraj(FGcoord, numParticles)
+            momErr, FGmom = self.psFile.readMomenta(1,tmpCWD,numParticles,
+                                                    addAtmNames=False)
+            FGmom = self.interpTraj(FGmom, numParticles)
+            phaseErr, FGphase = self.psFile.getTBFphase(1,tmpCWD)
+            TBFcoord = []
+            TBFmom = []
+            TBFphase = [] 
+            if not(posErr or momErr or phaseErr):
+                TBFcoord.append(FGcoord)
+                TBFmom.append(FGmom)
+                TBFphase.append(FGphase)
+            for childID in childIDs:
+                posErr, CHcoord = self.psFile.readPositions(childID, 
+                                                            tmpCWD,
+                                                            numParticles,
+                                                            addAtmNames=
+                                                            False,
+                                                            bohr=True)
+                CHcoord = self.interpTraj(CHcoord, numParticles)
+                posErr, CHmom = self.psFile.readPositions(childID, 
+                                                          tmpCWD,
+                                                          numParticles,
+                                                          addAtmNames=
+                                                          False)
+                phaseErr, CHphase = self.psFile.getTBFphase(childID,
+                                                            tmpCWD)
+                CHmom = self.interpTraj(CHmom, numParticles)
+                if not(posErr or momErr or phaseErr):
+                    TBFcoord.append(CHcoord)
+                    TBFmom.append(CHmom)
+                    TBFphase.append(CHphase)
+            TBFpop = self.psFile.getTBFpopulations()
+            TBFamp = self.psFile.getTBFamplitude()
+            TBFstt = self.psFile.getTBFstate(tmpCWD)
+            widths = self.psFile.readWidths(tmpCWD) 
+            atmNames = self.psFile.readAtomNames(tmpCWD) 
+            redDens = []
+            exactRedDens = []
+            yaxis = self.prsr.boxes.flatten()
+            densMovie = np.zeros((self.prsr.interpTime.size,yaxis.size,1))
+            exactDensMovie = np.zeros((self.prsr.interpTime.size,yaxis.size,1))
+            for t in np.arange(self.prsr.interpTime.size):
+                #print self.prsr.interpTime[t]
+                density = self.importanceSampling(tmpCWD, t, TBFcoord, TBFmom,
+                                                  TBFphase, TBFpop, TBFamp, 
+                                                  TBFstt, widths, atmNames)
+                redDens.append(density)
+                if ((self.prsr.internalType == "X") or
+                    (self.prsr.internalType == "Y")):
+                    exactDensity = self.calcExactDensity(tmpCWD, t, TBFcoord, 
+                                                         TBFmom, TBFphase, 
+                                                         TBFpop, TBFamp,
+                                                         TBFstt, widths, 
+                                                         atmNames, 
+                                                         np.amax(density))
+                    exactRedDens.append(exactDensity)
+
+            for t in np.arange(self.prsr.interpTime.size):
+                for y in np.arange(yaxis.size):
+                    densMovie[t, y, 0] = redDens[t][y] 
+                    exactDensMovie[t, y, 0] = exactRedDens[t][y]
+
+            header = ['Time (atu)', 'internal', 'red. density']
+            grid = [self.prsr.interpTime, yaxis]
+            fileName = 'redDens.dat' 
+            writeGridFile(fileName, grid, densMovie, 1, header)
+
+            header = ['Time (atu)', 'internal', 'red. density']
+            fileName = 'exactRedDens.dat' 
+            writeGridFile(fileName, grid, exactDensMovie, 1, header)
+            
+            #for iT, t in enumerate(self.prsr.interpTime):
+            #     densMovie[0, iT*xaxis.size:(iT+1)*xaxis.size].size = t
+            #     densMovie[1, iT*xaxis.size:(iT+1)*xaxis.size].size = xaxis 
+            #     densMovie[2, iT*xaxis.size:(iT+1)*xaxis.size].size = density[iT]
+
+
+            
+
+                 
+
 class internals(observables):
-    def __init__(self, parser, cwd, psFile, internalName = None):
+    def __init__(self, parser, cwd, psFile):
         observables.__init__(self, parser, cwd, psFile)
         self.observableType = "internals" 
-        self.internalName = internalName
 
     def getInternals(self):
         internals = 0
-        if self.internalName == None:
-            internals = self.getExpectationValue(saveStringParams = 
-                                                 [self.prsr.internalType,
-                                                  self.prsr.internalName])
-        else:
-            internals = self.getExpectationValue(saveStringParams = 
-                                                 [self.prsr.internalType],
-                                                 internalName = 
-                                                 self.internalName) 
+        if self.prsr.expecType == 'incoherent':
+            self.getIncoherentExpectationValue(
+                             saveStringParams = 
+                             [self.prsr.internalType,
+                             self.prsr.internalName]
+                             )
+        elif self.prsr.expecType == 'coherent':
+            self.getCoherentExpectationValue(
+                           saveStringParams = 
+                           [self.prsr.internalType,
+                           self.prsr.internalName]
+                           )
 
     def saveInternals(self, tmpCWD, curInternals, ID, internalName = None,
                       popTBF = None, time = None):
@@ -196,7 +624,6 @@ class internals(observables):
             writeNPFile(2, saveFile, [saveTime, saveInternals], 
                         fmtStyle = "%8d %30.18e") 
         else:
-            #print popTBF
             if not(len(time) == 1):
                 saveTime        = np.linspace(time[0], time[-1], 1000)
                 saveInternals   = np.interp(saveTime, time, curInternals)
@@ -237,17 +664,12 @@ class internals(observables):
         spawnTimes, childIDs, parentIDs, numSpawns = self.psFile.findNrSpawns(tmpCWD)
         posErr, FGcoord = self.psFile.readPositions(1, tmpCWD,
                                                     numParticles)
-        if ((self.internalName == None) and 
-           (internalName == None)):
+        if (internalName == None):
             FGinternal, FGtime = self.calcInternals(FGcoord)
-        elif ((self.internalName == None) and 
-              (internalName != None)):
+        else:
             FGinternal, FGtime = self.calcInternals(FGcoord, 
                                                     internalName =
                                                     internalName)
-        else:
-            FGinternal, FGtime = self.calcInternals(FGcoord, 
-                                 internalName = self.internalName[ind])
         interpFGintrnl = np.interp(self.prsr.interpTime, FGtime, 
                                    FGinternal)
         if (internalName == None):
@@ -255,49 +677,25 @@ class internals(observables):
         else:
             internalTime.append(FGtime[FGinternal > 0])
             internal.append(FGinternal[FGinternal > 0])
-        if ((self.internalName == None) and
-            (internalName == None)):
+
+        if (internalName == None):
             self.saveInternals(tmpCWD, interpFGintrnl, 1)
-       # elif ((self.internalName == None) and
-       #     (internalName != None)):
-       #     self.saveInternals(tmpCWD, interpFGintrnl, 1,
-       #                        internalName = internalName)
-        elif ((self.internalName != None) and
-              (internalName == None)):
-            self.saveInternals(tmpCWD, interpFGintrnl, 1, 
-                               internalName = self.internalName[ind])
          
-        if type(childIDs) != np.ndarray:
-            childIDs = np.array([childIDs])
         for childID in childIDs:
             posErr, CHcoord = self.psFile.readPositions(childID, 
                                                         tmpCWD,
                                                         numParticles)
             if not(posErr):
-                if ((self.internalName == None) and 
-                   (internalName == None)):
+                if (internalName == None):
                     CHinternal, CHtime = self.calcInternals(CHcoord)
-                elif ((self.internalName == None) and 
-                      (internalName != None)):
+                else:
                     CHinternal, CHtime = self.calcInternals(CHcoord, 
                                                             internalName =
                                                             internalName)
-                else:
-                    CHinternal, CHtime = self.calcInternals(CHcoord,
-                                         internalName = self.internalName[ind])
                 interpCHintrnl = np.interp(self.prsr.interpTime,  
                                            CHtime, CHinternal)
-                if ((self.internalName == None) and
-                    (internalName == None)):
+                if (internalName == None):
                         self.saveInternals(tmpCWD, interpCHintrnl, childID)
-       #         elif ((self.internalName == None) and
-       #             (internalName != None)):
-       #                 self.saveInternals(tmpCWD, interpCHintrnl, childID,
-       #                                    internalName = internalName)
-                elif ((self.internalName != None) and
-                      (internalName == None)):
-                    self.saveInternals(tmpCWD, interpFGintrnl, childID, 
-                                       internalName = self.internalName[ind])
 
                 if (internalName == None):
                     internal.append(interpCHintrnl)
@@ -308,33 +706,22 @@ class internals(observables):
     def getRAWObservable(self): 
         internal = []
         if hasattr(self.prsr, "sampleSize"): 
-            if not(self.internalName == None):
-                ind = 0
+            #if not(self.internalName == None):
+            #    ind = 0
             for geom in np.arange(1, self.prsr.sampleSize + 1):
                 geomInternal = []
                 if geom in self.prsr.dupList:
-                    #print geom
                     continue
                 if self.prsr.AIMStype != "AIMS":
                     for rng in np.arange(1, self.prsr.nrRNGs + 1):
                         rngInternal = []
                         tmpCWD = self.CWD + "/" + self.prsr.RNGdir + str(rng)  
                         tmpCWD += "/" + self.prsr.geomDir + str(geom)
-                        if (self.internalName == None):
-                            self.addInternal(rngInternal, tmpCWD)
-                        else:
-                            self.addInternal(rngInternal, tmpCWD, ind = ind)
+                        self.addInternal(rngInternal, tmpCWD)
                         geomInternal.append(rngInternal)
-
-                    if not(self.internalName == None):
-                        ind += 1
                 else:
-                    #tmpCWD = self.CWD + "/geom_" + str(geom)
                     tmpCWD = self.CWD + "/" + self.prsr.geomDir + str(geom)
-                    if (self.internalName == None):
-                        self.addInternal(geomInternal, tmpCWD) 
-                    else:
-                        self.addInternal(geomInternal, tmpCWD, ind = ind) 
+                    self.addInternal(geomInternal, tmpCWD) 
                 if len(geomInternal) != 0:
                     internal.append(geomInternal)
         else:
@@ -343,373 +730,33 @@ class internals(observables):
 
         return internal
 
-class molpop(object):
-    """
-        This class handles the calculation of internals  
-        when there are many equivalent bonds that can 
-        break. This is done in the same way as described 
-        in: 
-            Crespo-Otero, R. and Barbatti, M.; J. Chem. Phys. 
-            134, 164305 (2011)
-    """
-    def __init__(self, parser, cwd, psFile):
-        self.prsr = parser
-        self.CWD  = cwd
-        self.psFile = psFile
-        self.internals = internals(self.prsr, self.CWD, self.psFile) 
-        assert(not(hasattr(self.prsr, "internalName"))) 
+    def calcRAWObservable(self, molStruct):
+        atmsInvolved = self.prsr.internalName.split("-") 
+        if self.prsr.internalType == "bl":
+            assert (len(atmsInvolved) == 2)
+        elif self.prsr.internalType == "ba":
+            assert (len(atmsInvolved) == 3)
+        elif self.prsr.internalType == "td":
+            assert (len(atmsInvolved) == 4)
+        elif ((self.prsr.internalType == "X") or
+              (self.prsr.internalType == "Y")):
+            assert (len(atmsInvolved) == 1)
 
-    #def getDissociation(self):
-    #    self.internals.getInternals()
-    
-    def getEquivalentBonds(self):
-        if hasattr(self.prsr, "sampleSize"): 
-            if self.prsr.AIMStype != "AIMS":
-                tmpCWD = self.CWD + "/" + self.prsr.RNGdir + "1/" 
-                tmpCWD += self.prsr.geomDir + "1" 
-            else:
-                tmpCWD = self.CWD + "/" + self.prsr.geomDir + "1" 
-        else:
-            tmpCWD = self.CWD  
-
-        fileName = tmpCWD + "/Geometry.dat"
-        #numParticles = self.psFile.findNumAtoms(tmpCWD)
-        #test = redundantInternals(numParticles, fname = fileName,
-        #                          fileType = "dat")
-        #test.getBondPartner()
-        dissPartners = self.prsr.dissPartners
-        with open(fileName, "r") as geomLines:
-            linenr = -2 
-            atomNames = []
-            for geomLine in geomLines:
-                currAtmName = geomLine.strip().split()[0]
-                linenr += 1
-                if currAtmName in dissPartners:
-                    atomNames.append((currAtmName,  str(linenr)))
-                if linenr == 13:
-                    break
-            
-            bondNames = [] 
-            for atomName1 in atomNames:
-                bondName = ""
-                if atomName1[0] == dissPartners.split("-")[0]:
-                    bondName += atomName1[0] + atomName1[1] + "-"
-                    for atomName2 in atomNames:
-                        if atomName2[0] == dissPartners.split("-")[1]:
-                            bondNameN = bondName + atomName2[0] + atomName2[1]
-                            bondNames.append(bondNameN)
-            
-            return bondNames
-
-
-    def calculateDissociationThresh(self):
-        """
-            As described in the paper, the dissociation threshold
-            is defined to be two times the standard deviation,
-            assuming a normal distribution centred at the expected
-            value. 
-        """
-        equivalentBonds = self.getEquivalentBonds()
-        #print hasattr(self, "addInternal")
-        internal = []
-        internalTime = []
-        numSamples = 0
-        if hasattr(self.prsr, "sampleSize"): 
-            for geom in np.arange(1, self.prsr.sampleSize + 1):
-                geomInternal  = []
-                geomInternalT = []
-                if geom in self.prsr.dupList:
-                    #print geom
-                    continue
-                if self.prsr.AIMStype != "AIMS":
-                    for rng in np.arange(1, self.prsr.nrRNGs + 1):
-                        rngInternal  = []
-                        rngInternalT = []
-                        tmpCWD = self.CWD + "/" + self.prsr.RNGdir + str(rng) 
-                        tmpCWD += "/" + self.prsr.geomDir + str(geom)
-                        for bond in equivalentBonds: 
-                            equivInternal  = []
-                            equivInternalT = []
-                            self.internals.addInternal(equivInternal, tmpCWD, 
-                                                       internalName = bond,
-                                                       internalTime = equivInternalT)
-                            rngInternal.append(equivInternal)
-                            rngInternalT.append(equivInternalT)
-                        geomInternal.append(rngInternal)
-                        geomInternalT.append(rngInternalT)
-
-                else:
-                    tmpCWD = self.CWD + "/" + self.prsr.geomDir + str(geom)
-                    for bond in equivalentBonds: 
-                        equivInternal  = []
-                        equivInternalT = []
-                        self.internals.addInternal(equivInternal, tmpCWD, 
-                                                   internalName = bond,
-                                                   internalTime = equivInternalT)
-                        geomInternal.append(equivInternal)
-                        geomInternalT.append(equivInternalT)
-                internal.append(geomInternal)
-                internalTime.append(geomInternalT)
-        else:
-            tmpCWD = self.CWD 
-            for bond in equivalentBonds: 
-                equivInternal  = []
-                equivInternalT = []
-                self.internals.addInternal(equivInternal, tmpCWD,
-                                           internalName = bond,
-                                           internalTime = equivInternalT)
-                self.addInternal(internal, tmpCWD)
-
-        return internal, internalTime
-
-    def addPopandBl(self, tmpTBFpops, geomTBFpop, geomBl, geomTime, internal,
-                    internalTime):
-        """
-            Calculate means 
-        """ 
-        bondBlMean = []
-        normalizer = 0
-        #print(len(internal[0]), len(internal))
-        maxDisp = 0
-        maxBond = 0
-        maxBondSpawn = []
-        for i in np.arange(len(internal[0])):
-            spawnMean = 0 
-            for j in np.arange(len(internal)): 
-                currIntrnl = np.array(internal[j][i]) - internal[j][i][0] 
-                for k in currIntrnl:
-                    if k > maxDisp:
-                        maxDisp = k
-                        maxBond = j
-                spawnMean += currIntrnl 
-            maxBondSpawn.append(maxBond)
-            #print maxBondSpawn
-            spawnMean = spawnMean / len(internal)
-            bondBlMean.append(spawnMean)
-
-        bondTBFpop = []
-        bondTime = []
-        bondBl = []
-        for itmp, tmpTBFpop in enumerate(tmpTBFpops):
-            tmpTime =  internalTime[maxBond][itmp]
-            ntmpTime, ntmpTBFpop = self.psFile.zeroPadArray(tmpTime,
-                                                            tmpTBFpop)
-            interpTBFpop = np.interp(self.prsr.interpTime, ntmpTime,
-                                     ntmpTBFpop)
-            normalizer += interpTBFpop
-        for iSpawn, spawn in enumerate(internal[maxBond]):
-            blTBFpop = []
-            blTime   = [] 
-            blBl     = [] 
-            bl0 = spawn[0] 
-            for iBl, bl in enumerate(spawn):
-                disp = bl - bl0 
-                #if (disp > (bondBlMean[iSpawn][iBl] + self.prsr.thresh)):
-                #print disp, self.prsr.thresh, internalTime[maxBond][iSpawn][iBl], maxBond + 1, iSpawn + 1
-                if (disp > (self.prsr.thresh)):
-                    blBl.append(bl)
-                    if tmpTBFpops[iSpawn].size == 1:
-                        blTBFpop.append(tmpTBFpops[iSpawn])
-                        blTime.append(internalTime[maxBond][iSpawn][0])
+        atmcoords = []
+        for atm in molStruct:
+            for i in np.arange(len(atmsInvolved)):
+                if atm[0] == atmsInvolved[i]:
+                    if not((self.prsr.internalType == "X") or
+                           (self.prsr.internalType == "Y")):
+                        atmcoords.append(np.array(atm[1:])*b2A)
                     else:
-                        blTBFpop.append(tmpTBFpops[iSpawn][iBl])
-                        blTime.append(internalTime[maxBond][iSpawn][iBl])
-            if len(blBl) > 0:
-                blBl = np.array(blBl)
-                blTime = np.array(blTime)
-                blTBFpop = np.array(blTBFpop) 
-                # discard those bonds that recross the dissociation threshold  
-                if blTime[-1] != internalTime[maxBond][iSpawn][-1]:
-                    continue
-                nBlTime, blTBFpop = self.psFile.zeroPadArray(blTime,
-                                                             blTBFpop)
-                blTBFpop = (np.interp(self.prsr.interpTime, nBlTime,
-                            blTBFpop) / normalizer)
-                nBlTime, blBl = self.psFile.zeroPadArray(blTime, blBl)
-                blBl = np.interp(self.prsr.interpTime, nBlTime, blBl)
-                bondBl.append(blBl)
-                bondTBFpop.append(blTBFpop)
-                bondTime.append(nBlTime)
-        totPop = 0
-        for iPop, pop in enumerate(bondTBFpop):
-            timeOld = 0
-            for time in np.arange(pop.size):
-                if bondBl[iPop][time] > 0.0:
-                    timeNew =  self.prsr.interpTime[time]
-                    diff = timeNew - timeOld
-                    if  timeOld > 0.0 and diff > self.prsr.step: 
-                        print diff, timeOld, timeNew
-                    timeOld = timeNew
-            totPop += np.array(pop)
-        for i in np.arange(totPop.size):
-            if totPop[i] == 1.:
-                totPop[i:] = 1.
-                break 
-        geomBl.append(bondBl)
-        geomTBFpop.append(totPop)
-        geomTime.append(bondTime)
-        #print geomTime
+                        atmcoords.append(np.array(atm[1]))
+
+        if not((self.prsr.internalType == "X") or
+               (self.prsr.internalType == "Y")):
+            rawObservable = calcIntrnl(atmcoords, self.prsr.internalType)
+        else: 
+            rawObservable = atmcoords[0]
         
+        return rawObservable
 
-    def getPopandBl(self, geomTBFpop, geomBl, geomTime, internal, internalTime): 
-        TBFpops = self.psFile.getTBFpopulations(interp = False)
-        ind = 0
-        if hasattr(self.prsr, "sampleSize"):
-            for geom in np.arange(1, self.prsr.sampleSize + 1):
-                if geom in self.prsr.dupList:
-                    #print geom
-                    continue
-                if self.prsr.AIMStype != "AIMS":
-                    rngTBFpop     = []
-                    for rng in np.arange(self.prsr.nrRNGs):
-                        tmpTBFpops    = TBFpops[ind][rng]
-                        self.addPopandBl(tmpTBFpops, rngTBFpop, geomBl, 
-                                         geomTime, internal[ind][rng], 
-                                         internalTime[ind][rng])
-                    geomTBFpop.append(rngTBFpop)
-                    ind += 1
-                else:
-                    tmpTBFpops = TBFpops[ind]
-                    self.addPopandBl(tmpTBFpops, geomTBFpop, geomBl, geomTime,
-                                     internal[ind], internalTime[ind])
-                    #print(geom)
-                    ind += 1
-            #print len(geomTBFpop)
-
-    #def addGeomMolpop(self, geomMolpop, geomTBFpop):
-    #    if len(geomTBFpop) == 0:
-    #        geomMolpop.append(np.zeros(self.prsr.interpTime.size))   
-    #    else:
-    #        bondMolpops = []
-    #        numSamples = 0
-    #        for iBond, bond in enumerate(geomTBFpop):
-    #            #print bond
-    #            tmpBondMolpop = 0 
-    #            for iSpawn, spawn in enumerate(bond):
-    #                tmpBondMolpop += spawn  
-    #            bondMolpops.append(tmpBondMolpop) 
-    #        if len(bondMolpops) > 1:
-    #            #print "more than one"
-    #            #print bondMolpops
-    #            bondMolpop = np.zeros(self.prsr.interpTime.size) 
-    #            for itime in np.arange(self.prsr.interpTime.size):
-    #                average = [] 
-    #                for bond in bondMolpops: 
-    #                    if bond[itime] > 0.0:
-    #                        average.append(True)
-    #                    else:
-    #                        average.append(False)
-    #                denominator = sum(average)
-    #                for bond in bondMolpops:
-    #                    if denominator == 0:
-    #                        bondMolpop[itime] += bond[itime]
-    #                    #bondMolpop[itime] += bond[itime]
-    #                    else:
-    #                        bondMolpop[itime] += bond[itime]/denominator
-    #                        
-    #        else:
-    #            #print "just one"
-    #            bondMolpop = tmpBondMolpop 
-    #        geomMolpop.append(bondMolpop)
-
-    def getGeomMolpop(self, geomMolpop, geomTBFpop, geomBl):
-        #print(len(geomTBFpop))
-        if hasattr(self.prsr, "sampleSize"):
-            for geom in np.arange(self.prsr.sampleSize):
-                if geom in self.prsr.dupList:
-                    #print geom
-                    continue
-                if self.prsr.AIMStype != "AIMS":
-                    for rng in np.arange(self.prsr.nrRNGs):
-                        #print len(geomTBFpop[geom][rng])
-                        geomMolpop.append(geomTBFpop[geom][rng])
-                else:
-                    geomMolpop.append(geomTBFpop[geom])
-
-    def globalExpec(self,internal,internalTime):
-        equivalentBonds = self.getEquivalentBonds()
-        numEquivBonds   = len(equivalentBonds)
-        #print numEquivBonds
-        TBFpops = self.psFile.getTBFpopulations()
-        TBFpopsN = self.psFile.getTBFpopulations(interp=False)
-        samples = []
-        for geom in np.arange(self.prsr.sampleSize):
-            for bond in np.arange(numEquivBonds):
-                if self.prsr.AIMStype != "AIMS":
-                    for rng in np.arange(self.prsr.nrRNGs):
-                        tmpCWD = self.CWD + "/" + self.prsr.RNGdir + str(rng+1)  
-                        tmpCWD += "/" + self.prsr.geomDir + str(geom+1)
-                        tmpInternals = []
-                        for spawn in np.arange(len(internal[geom][rng][bond])):
-                            #if (spawn + 1) == len(internal[geom][rng][bond]):
-                            #    print geom+1, rng+1, spawn+1
-                            #    print TBFpops[geom][rng] 
-                            tmpInternal = np.interp(self.prsr.interpTime,  
-                                    internalTime[geom][rng][bond][spawn],
-                                    internal[geom][rng][bond][spawn])  
-                            tmpInternals.append(tmpInternal)
-                            self.internals.saveInternals(tmpCWD, internal[geom][rng][bond][spawn], spawn+1,
-                                                         internalName = equivalentBonds[bond],
-                                                         popTBF = TBFpopsN[geom][rng][spawn],
-                                                         time = internalTime[geom][rng][bond][spawn])
-                        sample = self.internals.calcIncoherentSum(
-                                                    TBFpops[geom][rng],
-                                                    tmpInternals)
-                        samples.append(sample)
-                else:
-                    tmpInternals = []
-                    tmpCWD = self.CWD + "/" + self.prsr.geomDir + str(geom+1)
-                    for spawn in np.arange(len(internal[geom][bond])):
-                        tmpInternal = np.interp(self.prsr.interpTime,  
-                                     internalTime[geom][bond][spawn],
-                                     internal[geom][bond][spawn])  
-                        tmpInternals.append(tmpInternal)
-                        self.internals.saveInternals(tmpCWD, internal[geom][bond][spawn], spawn+1,
-                                                     internalName = equivalentBonds[bond],
-                                                     popTBF = TBFpopsN[geom][spawn],
-                                                     time = internalTime[geom][bond][spawn])
-                    sample = self.internals.calcIncoherentSum(
-                                                 TBFpops[geom],
-                                                  tmpInternals)
-                    samples.append(sample)
-
-        
-        mean = 0 
-        for sample in samples:
-            mean += sample
-        mean = mean / len(samples)
-        #print len(geomMolpop)
-        sd = 0 
-        for sample in samples:
-            sd += (sample - mean)**2 
-        sd = np.sqrt(sd / (len(samples) * (len(samples) - 1)))
-        saveFile  = self.prsr.internalType + self.prsr.dissPartners + "_"
-        saveFile += self.prsr.AIMStype + ".dat"
-        writeNPFile(3, saveFile, [self.prsr.interpTime, mean, sd], 
-                    fmtStyle = "%8d %30.18e %30.18e")
-
-    def getMolpop(self):
-        internal, internalTime = self.calculateDissociationThresh()
-        self.globalExpec(internal,internalTime)
-        geomTBFpop = [] 
-        geomBl     = []
-        geomTime   = []
-        self.getPopandBl(geomTBFpop, geomBl, geomTime, internal, internalTime)
-        geomMolpop = []
-        self.getGeomMolpop(geomMolpop, geomTBFpop, geomBl)
-        mean = 0 
-        for i in geomMolpop:
-            #print i
-            mean += i
-        mean = mean / len(geomMolpop)
-        sd = 0 
-        for i in geomMolpop:
-            sd += (i - mean)**2 
-        sd = np.sqrt(sd / (len(geomMolpop) * (len(geomMolpop) - 1)))
-
-        saveFile = "N_DISS_" + self.prsr.AIMStype + ".dat"
-        writeNPFile(3, saveFile, [self.prsr.interpTime, mean, sd], 
-                    fmtStyle = "%8d %30.18e %30.18e")
-        saveFile = "N_UNDISS_" + self.prsr.AIMStype + ".dat"
-        writeNPFile(3, saveFile, [self.prsr.interpTime, 1 - mean, sd], 
-                    fmtStyle = "%8d %30.18e %30.18e")

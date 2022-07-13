@@ -20,7 +20,7 @@ class computationalComplexity(object):
     def complexityInnerLoop(self, tmp_CWD, interpNrTBF, interpNrCalcIFG):
         # calculates the cumulative number of TBFs and theor. Nr. of ES calls
         # for every stochastic rerun
-        if self.prsr.AIMStype in ["AIMS", "ESSAIMS", "OSSAIMS","SWISS"]:
+        if self.prsr.AIMStype in ["AIMS", "ESSAIMS", "OSSAIMS","AIMSWISS"]:
             for geom in np.arange(1,self.prsr.sampleSize+1):
                 if geom in self.prsr.dupList:
                     continue
@@ -84,7 +84,7 @@ class computationalComplexity(object):
                                                                   interpNrCalcIFG)
             interpNrCalcTot += interpNrTBF * (interpNrTBF + 1) / 2
             nrICs = self.prsr.sampleSize - len(self.prsr.dupList)
-        elif self.prsr.AIMStype in ["ESSAIMS", "OSSAIMS", "SWISS", "SWISS_dirty"]:
+        elif self.prsr.AIMStype in ["ESSAIMS", "OSSAIMS", "AIMSWISS", "SWISS_dirty"]:
             tmpInterpNrTBF = 0
             for DIR in np.arange(1, self.prsr.nrRNGs + 1): 
                 #tmp_CWD = self.CWD + "/rng" + str(DIR) 

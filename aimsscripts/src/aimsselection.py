@@ -17,7 +17,8 @@ class selectionConsistency(object):
         self.psFile = psFile
 
 
-    def selectionInnerLoop(self, tmpCWD, successes, failures):
+    def selectionInnerLoop(self, tmpCWD, successes, failures,
+                           successDTime, failureDTime):
         for geom in np.arange(1, self.prsr.sampleSize + 1):
             if geom in self.prsr.dupList:
                 continue
@@ -34,7 +35,10 @@ class selectionConsistency(object):
             failureFile = self.psFile.inputFileName(tmpCWD, "FailSelect.log", 
                                              dirType = self.prsr.geomDir, 
                                              numStr = str(geom))
-
+            tSpawn, childID, parentID, nrSpawns = self.psFile.findNrSpawns(
+                                                      tmpCWD + '/' + self.prsr.geomDir + str(geom)
+                                                  )
+            #print tSpawn
             try:
                 with open(successFile, "r") as successData:
                     for line in successData:
@@ -58,22 +62,26 @@ class selectionConsistency(object):
                             selectionTime = float(lineArr[1].strip())
                             predictedOlap = float(lineArr[-2].strip())
                             actualOlap    = float(lineArr[-1].strip()) 
-                            failure = [selectionTime, predictedOlap,
-                                       actualOlap]
-                            failures.append(failure)
+                            if (1 - (1.*predictedOlap/actualOlap)) > 0.2:
+                                failure = [selectionTime, predictedOlap,
+                                           actualOlap]
+                                failures.append(failure)
             except:
                 pass 
 
 
 
     def getSelection(self):
-        assert(self.prsr.AIMStype == "SWISS")
+        assert(self.prsr.AIMStype == "AIMSWISS")
         successes = []
         failures = []
+        sDTime = []
+        fDTime = []
         for rng in np.arange(1, self.prsr.nrRNGs + 1):
             #tmpCWD = self.CWD + "/rng" + str(rng) 
             tmpCWD = self.CWD + "/" + self.prsr.RNGdir + str(rng) 
-            self.selectionInnerLoop(tmpCWD, successes, failures)
+            self.selectionInnerLoop(tmpCWD, successes, failures,
+                                    sDTime, fDTime)
 
         tot = len(successes) + len(failures)
         fracFail = len(failures) / (1. * tot) * 100

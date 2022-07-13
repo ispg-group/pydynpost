@@ -32,7 +32,7 @@ class decoherenceTimes(object):
         timeAIMS = timeAIMS - tmpTSpawn
         timeInterp = np.arange(0,timeAIMS[-1],0.01)
         overlapInterp = np.interp(timeInterp, timeAIMS, overlapAIMS)
-        time10 = timeInterp[overlapInterp <= 0.1 * overlapMax]
+        time10 = timeInterp[overlapInterp <= np.exp(-1) * overlapMax]
         tmpDTimeAIMS = time10[0]
         for j in np.arange(1,time10.size):
             if round(time10[j] - time10[j-1]) > 1e-2:
@@ -40,7 +40,7 @@ class decoherenceTimes(object):
         decoherenceTimeAIMS.append(tmpDTimeAIMS)
         timeModel = np.arange(0,10*timeAIMS[-1],0.01)  
         overlapModel = np.exp(-drate * timeModel**2) * overlapMax 
-        time10Model = timeModel[overlapModel <= 0.1 * overlapMax] 
+        time10Model = timeModel[overlapModel <= np.exp(-1) * overlapMax] 
         modelPCFile = "ModelPC." + str(tmpChildID)
         modelSaveFile = self.psFile.inputFileName(tmpCWD, modelPCFile)
         modelFormat = np.zeros((timeModel.size/1000,2))
@@ -53,7 +53,8 @@ class decoherenceTimes(object):
         
         return decoherenceTimeAIMS, decoherenceTimeModel
 
-    def getDecoherenceTimes(self, offset, maxspawn):
+#    def getDecoherence(self, offset, maxspawn):
+    def getDecoherence(self):
         s = 0
         decoherenceTimeAIMS = []
         decoherenceTimeModel = []
@@ -63,7 +64,7 @@ class decoherenceTimes(object):
             if geom in self.prsr.dupList:
                 continue
             try:
-                tmpTSpawn, tmpChildID, tmpParentID, tmpNrSpawns = self.psFile.findNrSpawns(tmpCWD, maxspawn = maxspawn) 
+                tmpTSpawn, tmpChildID, tmpParentID, tmpNrSpawns = self.psFile.findNrSpawns(tmpCWD)#, maxspawn = maxspawn) 
                 if any(tmpTSpawn == -10.0):
                     continue
                 if tmpTSpawn.size == 0:
@@ -72,7 +73,7 @@ class decoherenceTimes(object):
                 #print("geom_" + str(geom) + "did not spawn, ignoring it")
                 print(self.prsr.geomDir + str(geom) + "did not spawn, ignoring it")
                 continue
-            tmpTSpawn += offset
+            #tmpTSpawn += offset
             # Find the number of particles from the input files
             controlFile = self.psFile.inputFileName(tmpCWD, "Control.dat")
             f = open(controlFile, "r")
@@ -86,8 +87,8 @@ class decoherenceTimes(object):
                 for spawn in np.arange(tmpNrSpawns):
                     ParentForces, ChildForces, spawnCorr = self.psFile.readSpawnForces(tmpCWD, tmpTSpawn[spawn], tmpChildID[spawn], 
                                                            tmpParentID[spawn], numParticles)
+                    #print ParentForces, ChildForces
                     if (len(ParentForces) == 0) or (len(ChildForces) == 0):
-                        s -= 1
                         continue
 
                     if spawnCorr != 0:
@@ -99,13 +100,15 @@ class decoherenceTimes(object):
                                                                              tmpTSpawn[spawn], decoherenceTimeAIMS, 
                                                                              decoherenceTimeModel) 
                     except:
-                        s -= 1
-
+                        if  len(decoherenceTimeAIMS) > len(decoherenceTimeModel):
+                            decoherenceTimeAIMS = decoherenceTimeAIMS[:-1]
+                        elif len(decoherenceTimeAIMS) < len(decoherenceTimeModel):
+                            decoherenceTimeModel = decoherenceTimeModel[:-1]
+                        continue
             else:
                 ParentForces, ChildForces, spawnCorr = self.psFile.readSpawnForces(tmpCWD, tmpTSpawn, tmpChildID,
                                                        tmpParentID, numParticles)
                 if (len(ParentForces) == 0) or (len(ChildForces) == 0):
-                    s -= 1
                     continue
 
                 if spawnCorr != 0:
@@ -117,12 +120,19 @@ class decoherenceTimes(object):
                                                                                 tmpTSpawn, decoherenceTimeAIMS, 
                                                                                 decoherenceTimeModel) 
                 except:
-                    s -= 1
+                    if  len(decoherenceTimeAIMS) > len(decoherenceTimeModel):
+                        decoherenceTimeAIMS = decoherenceTimeAIMS[:-1]
+                    elif len(decoherenceTimeAIMS) < len(decoherenceTimeModel):
+                        decoherenceTimeModel = decoherenceTimeModel[:-1]
+                    continue
 
-            s += tmpNrSpawns
+            print(len(decoherenceTimeAIMS), len(decoherenceTimeModel))
 
-        saveformat = np.zeros((s,2))
+
+        assert (len(decoherenceTimeAIMS) == len(decoherenceTimeModel))
+        saveformat = np.zeros((len(decoherenceTimeAIMS),2))
         saveformat[:,0] = np.array(decoherenceTimeAIMS) 
         saveformat[:,1] =  np.array(decoherenceTimeModel)
-        decoherenceFile = "decoherenceTimes" + str(offset) + ".dat"
+#        decoherenceFile = "decoherenceTimes" + str(offset) + ".dat"
+        decoherenceFile = "decoherenceTimes.dat"
         np.savetxt(decoherenceFile, saveformat, fmt="%10.5f %10.5f")

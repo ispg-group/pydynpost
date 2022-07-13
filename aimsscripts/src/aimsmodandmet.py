@@ -5,7 +5,7 @@ moduleNames = {"population"   : "aimspopulation",
                "selection"    : "aimsselection",
                "history"      : "aimshistories",
                "internals"    : "aimsexpectationvalues",
-               "molpop"       : "aimsexpectationvalues",
+               "molpop"       : "aimsmolpop",
                "decoherence"  : "aimsdecoherence",
                "momentum"     : "aimsspawninganalysis"} 
 

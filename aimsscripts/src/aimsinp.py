@@ -43,6 +43,19 @@ def initParser(parser):
     if "internals" in parser.todo:
         parser.addInput("internalType", "Which kind of internal is it?")
         parser.addInput("internalName", "Which atoms contribute?")
+        parser.addInput("expecType", "Incoherent or coherent expectation value?")
+        if parser.expecType == "coherent":
+            parser.addInput("expecMin", "Minimum expectation value?")
+            parser.addInput("expecMax", "Maximum expectation value?")
+            parser.addInput("nrBoxes", "Number of boxes?")
+            interval = np.linspace(parser.expecMin,parser.expecMax,
+                                   parser.nrBoxes+1)
+            boxes = []
+            for i in np.arange(parser.nrBoxes):
+                boxes.append((interval[i], interval[i+1])) 
+            parser.boxes = np.array(boxes)
+            parser.addInput("densThresh", "Threshold for MC sampling?")
+
         assert (hasattr(parser, "internalType") and hasattr(parser, "internalName")) 
     elif "molpop" in parser.todo:
         parser.addInput("internalType", "Which kind of internal is it?")

@@ -29,8 +29,8 @@ class analyzeSpawning(object):
             numParticles = self.psFile.findNumAtoms(tmpCWD)
             if numSpawns > 1:
                 for i in np.arange(numSpawns):
-                    parentMom = self.psFile.readMomenta(spawnTimes[i], parentIDs[i], tmpCWD, numParticles)
-                    childMom  = self.psFile.readMomenta(spawnTimes[i], childIDs[i], tmpCWD, numParticles)
+                    parentMom = self.psFile.readSpawnMomenta(spawnTimes[i], parentIDs[i], tmpCWD, numParticles)
+                    childMom  = self.psFile.readSpawnMomenta(spawnTimes[i], childIDs[i], tmpCWD, numParticles)
                     if (parentMom.any() == None) or (childMom.any() == None):
                         continue
                     else:
@@ -41,8 +41,8 @@ class analyzeSpawning(object):
                         correlationFunction.append(dotChildParent/(np.linalg.norm(parentMom)*np.linalg.norm(childMom)))
                         magnitudeError.append(normDiffMom/normParentMom*100)
             else:
-                parentMom = self.psFile.readMomenta(spawnTimes, parentIDs, tmpCWD, numParticles)
-                childMom  = self.psFile.readMomenta(spawnTimes, childIDs, tmpCWD, numParticles)
+                parentMom = self.psFile.readSpawnMomenta(spawnTimes, parentIDs, tmpCWD, numParticles)
+                childMom  = self.psFile.readSpawnMomenta(spawnTimes, childIDs, tmpCWD, numParticles)
                 if (parentMom.any() == None) or (childMom.any() == None):
                     continue
                 else:

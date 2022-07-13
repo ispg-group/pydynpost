@@ -9,6 +9,8 @@ from filesys import *
 from misc import *
 from parse import *
 from aimsinp import *
+b2A = 0.529177249
+A2b = 1./b2A
 
 class processFiles(object):
     """ 
@@ -38,7 +40,8 @@ class processFiles(object):
         return fName
 
 
-    def __firstScanForce(openFile, forcesList):
+    def __firstScanForce(self,openFile, forcesList, tmpTSpawn,
+                         numParticles):
         # First scan through the parents forces.xyz file  
         start = 0
         for line in openFile:
@@ -52,7 +55,8 @@ class processFiles(object):
             elif (start >= numParticles + 1):
                 break
 
-    def __secondScanForce(openFile, forceList, tmpTSpawn, diffT):
+    def __secondScanForce(self, openFile, forceList, tmpTSpawn, diffT,
+                          numParticles):
         start = 0
         for line in openFile:
             if ("Time" in line) and (start == 0):
@@ -72,21 +76,23 @@ class processFiles(object):
     
     def readSpawnForces(self, tmpCWD, tmpTSpawn, tmpChildID, tmpParentID,
                         numParticles):
-        pFileType = "/forces." + str(tmpParentID) + ".xyz"
-        cFileType = "/forces." + str(tmpChildID)  + ".xyz"
+        pFileType = "forces." + str(tmpParentID) + ".xyz"
+        cFileType = "forces." + str(tmpChildID)  + ".xyz"
         parentFile = self.inputFileName(tmpCWD, pFileType) 
         childFile = self.inputFileName(tmpCWD, cFileType) 
         diffT = 0
         f = open(parentFile, "r")
         tmpForcesParent = []
-        self.__firstScanForce(f, tmpForcesParent)
+        self.__firstScanForce(f, tmpForcesParent, tmpTSpawn,
+                              numParticles)
         # Sometimes the forces are NOT written to forces.xyz
         # so we have to look at the next nearest timestep
         if len(tmpForcesParent) == 0:
             # rewind file
             f.seek(0)
             tmpTSpawn, diffT = self.__secondScanForce(f, tmpForcesParent,
-                                                      tmpTSpawn, diffT)
+                                                      tmpTSpawn, diffT, 
+                                                      numParticles)
 
         # don't exactly know why this is there
         try:
@@ -97,22 +103,33 @@ class processFiles(object):
 
         f.close()
 
-        f = open(childFile, "r")
-        start = 0
-        tmpForcesChild = []
-        # only one scan necessary now, since if force is written 
-        # to parents forces.xyz it is also written to that of the child. 
-        self.__firstScanForce(f, tmpForcesChild)
-        f.close()
+        if self.prsr.pckg == "molpro":
+            filesInTmpCWD = os.listdir(tmpCWD + "/" + self.prsr.outputDir)
+        else:
+            filesInTmpCWD = os.listdir(tmpCWD)
+        if cFileType in filesInTmpCWD:
+            f = open(childFile, "r")
+            start = 0
+            tmpForcesChild = []
+            # only one scan necessary now, since if force is written 
+            # to parents forces.xyz it is also written to that of the child. 
+            self.__firstScanForce(f, tmpForcesChild, tmpTSpawn,
+                                  numParticles)
+            f.close()
 
-        # don't exactly know why this is there
-        try:
-            childForces = np.genfromtxt(tmpForcesChild)[:,1:]
-            childForces = childForces.flatten()
-        except:
-            childForces = [] 
+            #print(tmpForcesChild)
 
-        return parentForces, childForces, diffT
+            # don't exactly know why this is there
+            try:
+                childForces = np.genfromtxt(tmpForcesChild)[:,1:]
+                childForces = childForces.flatten()
+            except:
+                childForces = [] 
+
+            return parentForces, childForces, diffT
+
+        else:
+            return [], [], []
 
     def readWidths(self, tmpCWD):
         FMSFile = self.inputFileName(tmpCWD, "FMS.out")
@@ -132,6 +149,26 @@ class processFiles(object):
 
         return np.array(tmpWidths) 
 
+    def readAtomNames(self, tmpCWD):
+        FMSFile = self.inputFileName(tmpCWD, "FMS.out")
+        f = open(FMSFile, "r")
+        start = 0
+        tmpNames = []
+        num = 1
+        for line in f:
+            if "Particle #" in line:
+                start += 1
+                continue
+            
+            if (start > 0) and (start < 4):
+                start += 1
+            elif (start == 4):
+                tmpNames.append(line.split(":")[1].strip() + str(num))
+                num += 1
+                start = 0
+
+        return np.array(tmpNames) 
+
     def readOverlaps(self, tmpCWD, childID):
         pcOlapFile = "pcolap." + str(childID)
         overlapFile = self.inputFileName(tmpCWD, pcOlapFile)
@@ -141,7 +178,7 @@ class processFiles(object):
 
         return timeConnected, absoluteOverlap
 
-    def readMomenta(self, spawnTime, ID, tmpCWD, numParticles):
+    def readSpawnMomenta(self, spawnTime, ID, tmpCWD, numParticles):
         momFile = "TrajDump." + str(ID) 
         trajDumpFile = self.inputFileName(tmpCWD, momFile) 
         trajDumpData = np.genfromtxt(trajDumpFile) 
@@ -163,7 +200,10 @@ class processFiles(object):
 
     def findNrSpawns(self, tmpCWD, maxspawn = None): 
         spawn_log = self.inputFileName(tmpCWD, "Spawn.log") 
-        filesInTmpCWD = os.listdir(tmpCWD)
+        if self.prsr.pckg == "molpro":
+            filesInTmpCWD = os.listdir(tmpCWD + "/" + self.prsr.outputDir)
+        else:
+            filesInTmpCWD = os.listdir(tmpCWD)
         if "Spawn.log" in filesInTmpCWD:
             spawn_data = np.genfromtxt(spawn_log)
             if spawn_data.shape != (spawn_data.size,):
@@ -188,8 +228,8 @@ class processFiles(object):
                 if maxspawn != None:
                     if tSpawn >= maxspawn:
                         tSpawn = -10.0
-                childID = spawn_data[3].astype(int)
-                parentID = spawn_data[5].astype(int)
+                childID = np.array([spawn_data[3]]).astype(int)
+                parentID = np.array([spawn_data[5]]).astype(int)
                 nrSpawns = tSpawn.size
         else:
             #print tmpCWD 
@@ -200,8 +240,41 @@ class processFiles(object):
         
         return tSpawn, childID, parentID, nrSpawns 
 
+    def getTBFstate(self, tmpCWD): 
+        spawn_log = self.inputFileName(tmpCWD, "Spawn.log") 
+        if self.prsr.pckg == "molpro":
+            filesInTmpCWD = os.listdir(tmpCWD + "/" + self.prsr.outputDir)
+        else:
+            filesInTmpCWD = os.listdir(tmpCWD)
 
-    def readPositions(self, ID, tmpCWD, numParticles):
+        control = self.inputFileName(tmpCWD, "Control.dat") 
+        with open(control, "r") as controlLines:
+            for controlLine in controlLines:
+                if 'InitState' in controlLine:
+                    try: 
+                        stateStr = controlLine.strip().split('=')[1]
+                        parentSt = int(stateStr)
+                    except:
+                        stateStr = controlLine.strip().split('=')[1]
+                        parentSt = int(stateStr.split()[0])
+                    break
+        
+        if "Spawn.log" in filesInTmpCWD:
+            spawn_data = np.genfromtxt(spawn_log)
+            if spawn_data.shape != (spawn_data.size,):
+                childSt = spawn_data[:,4].astype(int)
+            else:
+                childSt = np.array([spawn_data[3]]).astype(int)
+            runningSt = np.zeros(childSt.size+1)
+            runningSt[0] = parentSt
+            runningSt[1:] = childSt
+        else: 
+            runningSt = np.array([parentSt])
+        
+        return runningSt.astype(int)
+
+    def readPositions(self, ID, tmpCWD, numParticles,
+                      addAtmNames=True, bohr=False):
         posFile = "positions." + str(ID) + ".xyz"
         trajPosFile = self.inputFileName(tmpCWD, posFile) 
         merr = True 
@@ -231,9 +304,15 @@ class processFiles(object):
                     if (startRcoord) and (lineNr < numParticles + 1):
                         curline = line.strip().split()
                         atmName = curline[0] + str(lineNr)
-                        atmPos  = [atmName] 
+                        if addAtmNames:
+                            atmPos  = [atmName] 
+                        else:
+                            atmPos  = []
                         for i in curline[1:]:
-                            atmPos.append(float(i))
+                            if bohr:
+                                atmPos.append(float(i)*A2b)
+                            else:
+                                atmPos.append(float(i))
                         lineNr += 1
                         curPos.append(atmPos)
                     elif (startRcoord) and (lineNr == numParticles + 1):
@@ -247,32 +326,154 @@ class processFiles(object):
 
         return merr, [ ]
 
-    def zeroPadArray(self, time, observable):
+    def readMomenta(self, ID, tmpCWD, numParticles,
+                    addAtmNames=True):
+        momFile = "TrajDump." + str(ID) 
+        merr = True
+        if not(momFile in os.listdir(tmpCWD)):
+            momFile = "momenta." + str(ID) + ".xyz" 
+            try:
+                f = open(momFile, "r")
+                merr = False 
+            except:
+                pass
+
+            if not(merr):
+                with open(momFile, "r") as momLines:
+                    time = []
+                    momenta = []
+                    startRcoord = False
+                    lineNr = 0
+                    curMom = []
+                    curTime = 0
+                    for line in momLines:
+                        if "Time" in line:
+                            curTime = float(line.split(",")[0].split(":")[1].strip())
+                            time.append(curTime)
+                            startRcoord = True
+                            lineNr += 1
+                            curMom = []
+                            continue
+
+                        if (startRcoord) and (lineNr < numParticles + 1):
+                            curline = line.strip().split()
+                            atmName = curline[0] + str(lineNr)
+                            if addAtmNames: 
+                                atmMom  = [atmName] 
+                            else:
+                                atmMom  = []
+                            for i in curline[1:]:
+                                atmMom.append(float(i))
+                            lineNr += 1
+                            curMom.append(atmMom)
+                        elif (startRcoord) and (lineNr == numParticles + 1):
+                            lineNr = 0
+                            startRcoord = False 
+                            momenta.append(curMom)
+                    else: 
+                        momenta.append(curMom)
+        else:
+            trajDumpFile = self.inputFileName(tmpCWD, momFile) 
+            try: 
+                trajDumpData = np.genfromtxt(trajDumpFile) 
+                merr = False
+            except: 
+                pass
+
+            momenta = []
+            if not(merr):
+                time = trajDumpData[:, 0]
+                for i in np.arange(time.size):
+                    curMom = []
+                    for j in np.arange(3*numParticles+1,6*numParticles+1,3):
+                        curMom.append(trajDumpData[i,j:j+3].tolist())
+                    #print len(curMom)
+                    momenta.append(curMom)
+
+        if not(merr):
+            return merr, list(zip(time, momenta))
+        else:
+            return merr, []
+
+    def zeroPadArray(self, time, observableRe, observableIm=[]):
         # Since most TBFs are not alive for the totality
         # of the dynamics it is necessary to zero their
         # observable when their dead.  
         if time[0] > 0.0:
-            newObs = np.zeros(observable.size + 20)  
+            newObsRe = np.zeros(observableRe.size + 20)  
+            if not(observableIm == []):
+                newObsIm = np.zeros(observableRe.size + 20)  
             newTime = np.zeros(time.size + 20)
-            newObs[20:] = observable
+            newObsRe[20:] = observableRe
+            if not(observableIm == []):
+                newObsIm[20:] = observableIm
             newTime[20:] = time 
             newTime[:20] = np.linspace(0.0, time[0], num = 20)
         else:
-            newObs = observable 
+            newObsRe = observableRe
+            if not(observableIm == []):
+                newObsIm = observableIm
             newTime = time
 
         if newTime[-1] < self.prsr.maxTime:
-            newerObs = np.zeros(newObs.size + 20)  
+            newerObsRe = np.zeros(newObsRe.size + 20)  
+            if not(observableIm == []):
+                newerObsIm = np.zeros(newObsIm.size + 20)  
             newerTime = np.zeros(newTime.size + 20)
-            newerObs[:-20] = newObs 
+            newerObsRe[:-20] = newObsRe
+            if not(observableIm == []):
+                newerObsIm[:-20] = newObsIm
             newerTime[:-20] = newTime
             newerTime[-20:] = np.linspace(newTime[-1], self.prsr.maxTime, 
                                           num = 20)
         else:
-            newerObs = newObs 
+            newerObsRe = newObsRe
+            if not(observableIm == []):
+                newerObsIm = newObsIm
             newerTime = newTime  
 
-        return newerTime, newerObs
+        if observableIm == []:
+            return newerTime, newerObsRe
+        else:
+            return newerTime, newerObsRe, newerObsIm
+
+    def addTBFpopulations(self, tmpCWD, TBFpop, ID, interp=True):
+        ampFile = "Amp." + ID  
+        ampFile = self.inputFileName(tmpCWD, ampFile)
+        try:
+            ampData = np.genfromtxt(ampFile) 
+        except:
+            return -1
+        if interp:
+            if len(list(ampData.shape)) != 1:
+                if not(ID == '1'):
+                    time, pop = self.zeroPadArray(ampData[:,0], 
+                                                  ampData[:,1]) 
+                else:
+                    time = ampData[:,0]
+                    pop = ampData[:,1]
+                    if time[0] > 0.0:
+                        time = np.zeros(pop.size + 1)
+                        time[0] = 0.0
+                        time[1:] = ampData[:,0]
+                        pop = np.zeros(pop.size + 1)
+                        pop[0] = 1.0
+                        pop[1:] = ampData[:,1]
+                interpAmp = np.interp(self.prsr.interpTime, time, 
+                                      pop)
+            else:
+                time, pop = self.zeroPadArray(np.array([ampData[0]]),
+                                              np.array([ampData[1]])) 
+
+                interpAmp = np.interp(self.prsr.interpTime, time, 
+                                      pop)
+            TBFpop.append(interpAmp)
+        else:
+            if len(list(ampData.shape)) != 1:
+                pop = ampData[:,1]
+            else:
+                pop = ampData[1]
+            TBFpop.append(pop)
 
     def getTBFpopulations(self, interp=True):
         TBFpop = []
@@ -284,132 +485,161 @@ class processFiles(object):
                 if self.prsr.AIMStype != "AIMS":
                     for rng in np.arange(1, self.prsr.nrRNGs + 1):
                         rngTBFpop = []
-                        #tmpCWD = self.CWD + "/rng" + str(rng) + "/geom_" 
                         tmpCWD  = self.CWD + "/" + self.prsr.RNGdir + str(rng) 
                         tmpCWD += "/" + self.prsr.geomDir + str(geom)
-                        #tmpCWD += str(geom)
                         spawnTimes, childIDs, parentIDs, numSpawns = self.findNrSpawns(tmpCWD)
-                        ampFile = "Amp.1"   
-                        FGampFile = self.inputFileName(tmpCWD, ampFile)
-                        FGampData = np.genfromtxt(FGampFile) 
-                        if interp:
-                            FGtime, FGamp = self.zeroPadArray(FGampData[:,0], 
-                                                              FGampData[:,1]) 
-                            interpFGamp = np.interp(self.prsr.interpTime, FGtime, 
-                                                   FGamp)
-                            rngTBFpop.append(interpFGamp)
-                        else:
-                            FGamp = FGampData[:,1]
-                            rngTBFpop.append(FGamp)
-
-                        if type(childIDs) != np.ndarray:
-                            childIDs = np.array([childIDs])
+                        self.addTBFpopulations(tmpCWD, rngTBFpop, str(1), interp=interp)
                         for childID in childIDs:
-                            ampFile = "Amp." + str(childID)  
-                            CHampFile = self.inputFileName(tmpCWD, ampFile)
-                            try:
-                                CHampData = np.genfromtxt(CHampFile) 
-                            except:
-                                continue
-                            if interp:
-                                if len(list(CHampData.shape)) != 1:
-                                    CHtime, CHamp = self.zeroPadArray(CHampData[:,0],
-                                                                      CHampData[:,1]) 
-                                    interpCHamp = np.interp(self.prsr.interpTime, CHtime, 
-                                                            CHamp)
-                                    rngTBFpop.append(interpCHamp)
-                                else:
-                                    CHtime, CHamp = self.zeroPadArray(np.array([CHampData[0]]),
-                                                                      np.array([CHampData[1]])) 
-                                    interpCHamp = np.interp(self.prsr.interpTime, CHtime, 
-                                                            CHamp)
-                                    rngTBFpop.append(interpCHamp)
-                            else:
-                                if len(list(CHampData.shape)) != 1:
-                                    CHamp = CHampData[:,1]
-                                else:
-                                    CHamp = CHampData[1]
-                                rngTBFpop.append(CHamp)
+                            self.addTBFpopulations(tmpCWD, rngTBFpop, str(childID), interp=interp)
                                 
                         geomTBFpop.append(rngTBFpop)
                 else:
-                    #tmpCWD = self.CWD + "/geom_" + str(geom)
                     tmpCWD = self.CWD + "/" + self.prsr.geomDir + str(geom)
                     spawnTimes, childIDs, parentIDs, numSpawns = self.findNrSpawns(tmpCWD)
-                    ampFile = "Amp.1"   
-                    FGampFile = self.inputFileName(tmpCWD, ampFile)
-                    FGampData = np.genfromtxt(FGampFile) 
-                    if interp:
-                        FGtime, FGamp = self.zeroPadArray(FGampData[:,0], 
-                                                          FGampData[:,1]) 
-                        interpFGamp = np.interp(self.prsr.interpTime, FGtime, 
-                                               FGamp)
-                        geomTBFpop.append(interpFGamp)
-                    else:
-                        FGamp = FGampData[:,1]
-                        geomTBFpop.append(FGamp)
-
-                    if type(childIDs) != np.ndarray:
-                        childIDs = np.array([childIDs])
+                    self.addTBFpopulations(tmpCWD, geomTBFpop, str(1), interp=interp)
                     for childID in childIDs:
-                        ampFile = "Amp." + str(childID)  
-                        CHampFile = self.inputFileName(tmpCWD, ampFile)
-                        try:
-                            CHampData = np.genfromtxt(CHampFile) 
-                            if CHampData.shape == (4,):
-                                CHampData = np.array([CHampData.tolist()]) 
-                        except:
-                            continue
-                        if interp:
-                            CHtime, CHamp = self.zeroPadArray(CHampData[:,0],
-                                                              CHampData[:,1]) 
-                            interpCHamp = np.interp(self.prsr.interpTime, CHtime, 
-                                                    CHamp)
-                            geomTBFpop.append(interpCHamp)
-                        else:
-                            CHamp = CHampData[:,1]
-                            geomTBFpop.append(CHamp)
-                        
+                        self.addTBFpopulations(tmpCWD, geomTBFpop, str(childID), interp=interp)
+
                 if len(geomTBFpop) != 0:
                     TBFpop.append(geomTBFpop)
         else:
             tmpCWD = self.CWD 
             spawnTimes, childIDs, parentIDs, numSpawns = self.findNrSpawns(tmpCWD)
-            ampFile = "Amp.1"   
-            FGampFile = self.inputFileName(tmpCWD, ampFile)
-            FGampData = np.genfromtxt(FGampFile) 
-            if interp:
-                FGtime, FGamp = self.zeroPadArray(FGampData[:,0], 
-                                                  FGampData[:,1]) 
-                interpFGamp = np.interp(self.prsr.interpTime, FGtime, 
-                                       FGamp)
-                TBFpop.append(interpFGamp)
-            else:
-                FGamp = FGampData[:,1]
-                TBFpop.append(FGamp)
-
-            if type(childIDs) != np.ndarray:
-                childIDs = np.array([childIDs])
+            self.addTBFpopulations(tmpCWD, TBFpop, str(1), interp=interp)
             for childID in childIDs:
-                ampFile = "Amp." + str(childID)  
-                CHampFile = self.inputFileName(tmpCWD, ampFile)
-                try:
-                    CHampData = np.genfromtxt(CHampFile) 
-                    if CHampData.shape == (4,):
-                        CHampData = np.array([CHampData.tolist()]) 
-                except:
-                    continue
-                if interp:
-                    CHtime, CHamp = self.zeroPadArray(CHampData[:,0],
-                                                      CHampData[:,1]) 
-                    interpCHamp = np.interp(self.prsr.interpTime, CHtime, 
-                                            CHamp)
-                    TBFpop.append(interpCHamp)
-                else:
-                    CHamp = CHampData[:,1]
-                    TBFpop.append(CHamp)
+                self.addTBFpopulations(tmpCWD, TBFpop, str(childID), interp=interp)
 
         return TBFpop 
+
+    def addTBFamplitude(self, tmpCWD, TBFamp, ID, interp=True):
+        ampFile = "Amp." + ID  
+        ampFile = self.inputFileName(tmpCWD, ampFile)
+        try:
+            ampData = np.genfromtxt(ampFile) 
+        except:
+            return -1
+        if interp:
+            if len(list(ampData.shape)) != 1:
+                if not(ID == '1'):
+                    time, ampRe, ampIm = self.zeroPadArray(ampData[:,0], 
+                                                           ampData[:,2],
+                                                           observableIm=
+                                                           ampData[:,3]) 
+                    interpAmpRe = np.interp(self.prsr.interpTime, time, 
+                                            ampRe)
+                    interpAmpIm = np.interp(self.prsr.interpTime, time, 
+                                            ampIm)
+                else:
+                    time = ampData[:,0]
+                    ampRe = ampData[:,2]
+                    ampIm = ampData[:,3]
+                    interpAmpRe = np.interp(self.prsr.interpTime, time, 
+                                            ampRe)
+                    interpAmpIm = np.interp(self.prsr.interpTime, time, 
+                                            ampIm)
+            else:
+                time, ampRe, ampIm = self.zeroPadArray(np.array([ampData[0]]),
+                                                       np.array([ampData[2]]),
+                                                       observableIm=
+                                                       np.array([ampData[3]])) 
+                interpAmpRe = np.interp(self.prsr.interpTime, time, 
+                                        ampRe)
+                interpAmpIm = np.interp(self.prsr.interpTime, time, 
+                                        ampIm)
+            interpAmp = interpAmpRe + 1j * interpAmpIm
+            TBFamp.append(interpAmp)
+        else:
+            if len(list(ampData.shape)) != 1:
+                ampRe = ampData[:,2]
+                ampIm = ampData[:,3]
+            else:
+                ampRe = ampData[2]
+                ampIm = ampData[3]
+            amp = ampRe + 1j * ampIm
+            TBFamp.append(amp)
+
+    def getTBFamplitude(self, interp=True):
+        TBFamp = []
+        if hasattr(self.prsr, "sampleSize"):
+            for geom in np.arange(1, self.prsr.sampleSize + 1):
+                if geom in self.prsr.dupList:
+                    continue
+                geomTBFamp = []
+                if self.prsr.AIMStype != "AIMS":
+                    for rng in np.arange(1, self.prsr.nrRNGs + 1):
+                        rngTBFamp = []
+                        tmpCWD  = self.CWD + "/" + self.prsr.RNGdir + str(rng) 
+                        tmpCWD += "/" + self.prsr.geomDir + str(geom)
+                        spawnTimes, childIDs, parentIDs, numSpawns = self.findNrSpawns(tmpCWD)
+                        self.addTBFAmplitude(tmpCWD, rngTBFamp, str(1), interp=interp)
+                        for childID in childIDs:
+                            self.addTBFamplitude(tmpCWD, rngTBFamp, str(childID), interp=interp)
+                                
+                        geomTBFamp.append(rngTBFamp)
+                else:
+                    tmpCWD = self.CWD + "/" + self.prsr.geomDir + str(geom)
+                    spawnTimes, childIDs, parentIDs, numSpawns = self.findNrSpawns(tmpCWD)
+                    self.addTBFamplitude(tmpCWD, geomTBFamp, str(1), interp=interp)
+                    for childID in childIDs:
+                        self.addTBFamplitude(tmpCWD, geomTBFamp, str(childID), interp=interp)
+
+                if len(geomTBFamp) != 0:
+                    TBFamp.append(geomTBFamp)
+        else:
+            tmpCWD = self.CWD 
+            spawnTimes, childIDs, parentIDs, numSpawns = self.findNrSpawns(tmpCWD)
+            self.addTBFamplitude(tmpCWD, TBFamp, str(1), interp=interp)
+            for childID in childIDs:
+                self.addTBFamplitude(tmpCWD, TBFamp, str(childID), interp=interp)
+
+        return TBFamp 
+
+    def getTBFphase(self, ID, tmpCWD, interp=True):
+        trajDump = 'TrajDump.' + str(ID)
+        trajDumpFile = self.inputFileName(tmpCWD, trajDump) 
+        if (trajDump in os.listdir(tmpCWD)):
+            try: 
+                trajDumpData = np.genfromtxt(trajDumpFile) 
+                merr = False
+            except: 
+                pass
+
+            phases = []
+            if not(merr):
+                time = trajDumpData[:, 0]
+                for i in np.arange(time.size):
+                    phases.append(trajDumpData[i,-5])
+
+            if not(merr):
+                if (interp == True):
+                    phasesInterp = np.interp(self.prsr.interpTime, time,
+                                             phases) 
+                    return merr, phasesInterp
+                else:
+                    return merr, list(zip(time, phases))
+            else:
+                return merr, []
+        else:
+            phaseFile = 'Phase.' + str(ID)
+            try:
+                phaseData = np.genfromtxt(phaseFile)
+                merr = False
+            except:
+                pass
+            
+            if not(merr):
+                time = phaseData[:,0]
+                phases = phaseData[:,1]
+
+            if not(merr):
+                if (interp == True):
+                    phasesInterp = np.interp(self.prsr.interpTime, time,
+                                             phases) 
+                    return merr, phasesInterp
+                else:
+                    return merr, list(zip(time, phases))
+            else:
+                return merr, []
 
     def readNrTBFs(self, fileName):
         f = open(fileName, "r")

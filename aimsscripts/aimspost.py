@@ -17,7 +17,7 @@ class AIMSpost(object):
     """
        Main postprocessing script for FMS/AIMS simulations. Gathers different 
        kinds of data and does statistics on it:
-         - State Populations  
+         - State Populations
          - Number of TBFs
          - Theoretical Nr. of ES Calls (Worst Case)
          - Expectation values calculated in different ways
