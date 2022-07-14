@@ -46,7 +46,6 @@ class processFiles(object):
         nrAtoms = self.getNrAtoms(fileName) 
         positions = []
         for geom in np.arange(1, self.prsr.sampleSize + 1):
-            #print "geom" + str(geom)
             geomPositions = []
             if geom in self.prsr.dupList:
                 continue
@@ -117,8 +116,6 @@ class processFilesABIN(processFiles):
                 currState = currDat[:,1] 
                 currState = currState[currTime <= self.prsr.maxTime]
                 currTime  = currTime[currTime <= self.prsr.maxTime]
-                #interpCurrState = np.interp(self.prsr.interpTime, 
-                #                            currTime, currState) 
                 currentStates.append(currState)
         return currentStates
                 
@@ -130,8 +127,6 @@ class processFilesABIN(processFiles):
 
     def readStatePopulations(self): 
         fileNameRt = "pop.dat"
-        #statePopulation = []
-        #time = []
         geomStatePopulation = []
         geomTime = []
         for geom in np.arange(1, self.prsr.sampleSize + 1):
@@ -153,25 +148,15 @@ class processFilesABIN(processFiles):
                     indStatePop = []
                     for state in np.arange(2,self.prsr.nrStates+2):
                         tmpCurrStatePop = currDat[:, state] 
-                        #interpCurrStatePop = np.interp(self.prsr.interpTime, 
-                        #                               currTime, currStatePop) 
                         currStatePop = np.zeros(tmpCurrStatePop.size + 1) 
                         currStatePop[0] = initStPop[state-2]   
                         currStatePop[1:] = tmpCurrStatePop  
                         currStatePop = currStatePop[currTime <= self.prsr.maxTime]
                         indStatePop.append(currStatePop)
-                        #print "pop", currStatePop.size
-                        #if len(geomStatePopulation) > 0:
-                        #    print currStatePop - geomStatePopulation[-1][state-2]  
-                    #rngStatePopulation.append(currStatePop)
                     rngStatePopulation.append(indStatePop)
                 geomStatePopulation.append(rngStatePopulation)
                 currTime  = currTime[currTime <= self.prsr.maxTime]
-                #print "time", currTime.size
                 geomTime.append(currTime)
-#                statePopulation.append(geomStatePopulation)
-#                time.append(geomTime)
-                     
             else:
                 currFileName  = self.CWD + "/" + self.prsr.geomDir 
                 currFileName += str(geom) + "/" + fileNameRt 
@@ -180,14 +165,9 @@ class processFilesABIN(processFiles):
                 indStatePop = []
                 for state in np.arange(2,self.prsr.nrStates+2):
                     currStatePop = currDat[:, state] 
-                    #interpCurrStatePop = np.interp(self.prsr.interpTime, 
-                    #                               currTime, currStatePop) 
                     currStatePop = currStatePop[currTime <= self.prsr.maxTime]
                     indStatePop.append(currStatePop)
                 geomStatePopulation.append(currStatePop)
-                #statePopulation.append(geomStatePopulation)
-                #currTime  = currTime[currTime <= self.prsr.maxTime]
-                ##print currTime.size
                 geomTime.append(currTime)
                 
                 
@@ -243,10 +223,7 @@ class processFilesABIN(processFiles):
     def addPositions(self, initFileName, trajFileName, nrAtoms, outTraj):
         readTimestep = lambda a: float(a[-1]) 
         outTraj.append(self.addInitGeom(initFileName, nrAtoms))
-        #print outTraj
         outTraj[-1].extend(files.addTraj(trajFileName, nrAtoms, readTimestep))
-        #print outTraj
-        #print len(outTraj)
 
     def getNrAtoms(self, fileName):
         with open(fileName, "r") as geomLines:

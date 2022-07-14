@@ -148,12 +148,6 @@ class molpop(object):
                               -len(self.prsr.dupList)):
             if not(self.prsr.nrRNGs == 0):
                 for rng in np.arange(self.prsr.nrRNGs):
-                    #dispMean = 0
-                    #for i in np.arange(len(internal[geom][rng])):
-                    #    currIntrnl = np.array(internal[geom][rng][i]) 
-                    #    currIntrnl -= internal[geom][rng][i][0]
-                    #    dispMean += currIntrnl
-                    #dispMean = dispMean / len(internal[geom][rng])
                     maxDisp = 0 
                     maxBond = 0
                     for bond in np.arange(len(internal[geom][rng])):
@@ -165,13 +159,10 @@ class molpop(object):
                         bl0 = tmpInternal[0]
                         for iBl, bl in enumerate(tmpInternal): 
                             disp = bl - bl0 
-                            #print bond, disp, dispMean[iBl] + self.prsr.thresh, tmpInternalTime[iBl]
-                            #if (disp > dispMean[iBl] + self.prsr.thresh):
                             if disp > maxDisp:
                                 maxBond = bond 
                                 maxDisp = disp
 
-                    #print maxDisp, maxBond+1, rng+1, geom+1
                     maxInternal = internal[geom][rng][maxBond] 
                     maxInternalTime = internalTime[geom][rng][maxBond] 
                     tmpDissoc = np.zeros(len(tmpInternal)) 
@@ -180,30 +171,17 @@ class molpop(object):
                     bl0 = maxInternal[0]
                     for iBl, bl in enumerate(maxInternal): 
                         disp = bl - bl0 
-                        #if (disp > dispMean[iBl] + self.prsr.thresh):
                         if (disp >  self.prsr.thresh):
-                            #print disp, self.prsr.thresh, tmpInternalTime[iBl], maxBond + 1 
                             tmpDissoc[iBl:] += 1
                             blTime.extend(tmpInternalTime[iBl:])
                             break
                     
-                    # discard those bonds that recross the dissociation threshold  
                     if len(blTime) != 0:
                         if blTime[-1] != tmpInternalTime[-1]:
                             continue
                         else:
                             told = 0.0 
                             iTold = 0
-                            #for iTnew, tnew in enumerate(blTime):
-                            #    tdiff = tnew - told
-                            #    if tdiff > 20.0 and told > 0.0:
-                            #        for iT, t in enumerate(maxInternalTime):
-                            #            if t <= told:
-                            #                if tmpDissoc[iT] - 1 >= 0:
-                            #                    tmpDissoc[iT] -= 1
-                            #                    
-                            #                #print tmpDissoc[iT], t, rng+1, geom+1
-                            #    told = tnew
                         tmpDissoc = np.interp(self.prsr.interpTime, 
                                               tmpInternalTime, tmpDissoc)
                         numDissoc += tmpDissoc
