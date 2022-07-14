@@ -62,6 +62,7 @@ class statePopulations(object):
 
             nStateQm_mean /= nrSamples
             nStateQm_std = nStateQm_std / nrSamples - nstateQm_mean**2
+            nStateQm_std = np.sqrt(1/(nrSamples-1)*nStateQm_std)
             
             nStateQm_mean = np.interp(self.prsr.interpTime, time[0],
                                       nStateQm_mean)
