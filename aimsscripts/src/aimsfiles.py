@@ -382,15 +382,25 @@ class processFiles(object):
 
             momenta = []
             if not(merr):
-                time = trajDumpData[:, 0]
-                for i in np.arange(time.size):
+                if not(len(trajDumpData.shape) == 1):
+                    time = trajDumpData[:, 0]
+                    for i in np.arange(time.size):
+                        curMom = []
+                        for j in np.arange(3*numParticles+1,6*numParticles+1,3):
+                            curMom.append(trajDumpData[i,j:j+3].tolist())
+                        #print len(curMom)
+                        momenta.append(curMom)
+                else:
+                    time = trajDumpData[0]
+                    time = np.array([time])
                     curMom = []
                     for j in np.arange(3*numParticles+1,6*numParticles+1,3):
-                        curMom.append(trajDumpData[i,j:j+3].tolist())
-                    #print len(curMom)
+                        curMom.append(trajDumpData[j:j+3].tolist())
                     momenta.append(curMom)
 
+
         if not(merr):
+            #print list(zip(time, momenta)) 
             return merr, list(zip(time, momenta))
         else:
             return merr, []
@@ -571,7 +581,7 @@ class processFiles(object):
                         tmpCWD  = self.CWD + "/" + self.prsr.RNGdir + str(rng) 
                         tmpCWD += "/" + self.prsr.geomDir + str(geom)
                         spawnTimes, childIDs, parentIDs, numSpawns = self.findNrSpawns(tmpCWD)
-                        self.addTBFAmplitude(tmpCWD, rngTBFamp, str(1), interp=interp)
+                        self.addTBFamplitude(tmpCWD, rngTBFamp, str(1), interp=interp)
                         for childID in childIDs:
                             self.addTBFamplitude(tmpCWD, rngTBFamp, str(childID), interp=interp)
                                 
@@ -606,9 +616,14 @@ class processFiles(object):
 
             phases = []
             if not(merr):
-                time = trajDumpData[:, 0]
-                for i in np.arange(time.size):
-                    phases.append(trajDumpData[i,-5])
+                if not(len(trajDumpData.shape) == 1):
+                    time = trajDumpData[:, 0]
+                    for i in np.arange(time.size):
+                        phases.append(trajDumpData[i,-5])
+                else: 
+                    time = np.array([trajDumpData[0]])
+                    phases.append(trajDumpData[-5])
+                    
 
             if not(merr):
                 if (interp == True):
@@ -628,8 +643,12 @@ class processFiles(object):
                 pass
             
             if not(merr):
-                time = phaseData[:,0]
-                phases = phaseData[:,1]
+                if not(len(phaseData.shape) == 1):
+                    time = phaseData[:,0]
+                    phases = phaseData[:,1]
+                else:
+                    time = np.array(phaseData[0])
+                    phases = np.array(phaseData[1])
 
             if not(merr):
                 if (interp == True):
