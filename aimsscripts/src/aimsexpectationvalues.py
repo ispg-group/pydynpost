@@ -639,7 +639,7 @@ class observables(object):
                                      )
                         fullDensity += tmpDensity  
                         nrSamples += 1
-                        ind += 1
+                    ind += 1
                 else:
                     print geom
                     tmpCWD  = self.CWD + "/" + self.prsr.geomDir + str(geom)

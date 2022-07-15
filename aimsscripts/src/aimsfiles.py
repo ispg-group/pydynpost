@@ -501,7 +501,7 @@ class processFiles(object):
                         self.addTBFpopulations(tmpCWD, rngTBFpop, str(1), interp=interp)
                         for childID in childIDs:
                             self.addTBFpopulations(tmpCWD, rngTBFpop, str(childID), interp=interp)
-                                
+                        #print geom, rng, len(rngTBFpop)
                         geomTBFpop.append(rngTBFpop)
                 else:
                     tmpCWD = self.CWD + "/" + self.prsr.geomDir + str(geom)
