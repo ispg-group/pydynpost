@@ -469,6 +469,8 @@ class processFiles(object):
                         pop = np.zeros(pop.size + 1)
                         pop[0] = 1.0
                         pop[1:] = ampData[:,1]
+                    time, pop = self.zeroPadArray(time, 
+                                                  pop)
                 interpAmp = np.interp(self.prsr.interpTime, time, 
                                       pop)
             else:
@@ -477,6 +479,7 @@ class processFiles(object):
 
                 interpAmp = np.interp(self.prsr.interpTime, time, 
                                       pop)
+            
             TBFpop.append(interpAmp)
         else:
             if len(list(ampData.shape)) != 1:
@@ -607,15 +610,16 @@ class processFiles(object):
     def getTBFphase(self, ID, tmpCWD, interp=True):
         trajDump = 'TrajDump.' + str(ID)
         trajDumpFile = self.inputFileName(tmpCWD, trajDump) 
+        mErr = True
         if (trajDump in os.listdir(tmpCWD)):
             try: 
                 trajDumpData = np.genfromtxt(trajDumpFile) 
-                merr = False
+                mErr = False
             except: 
                 pass
 
             phases = []
-            if not(merr):
+            if not(mErr):
                 if not(len(trajDumpData.shape) == 1):
                     time = trajDumpData[:, 0]
                     for i in np.arange(time.size):
@@ -625,24 +629,24 @@ class processFiles(object):
                     phases.append(trajDumpData[-5])
                     
 
-            if not(merr):
+            if not(mErr):
                 if (interp == True):
                     phasesInterp = np.interp(self.prsr.interpTime, time,
                                              phases) 
-                    return merr, phasesInterp
+                    return mErr, phasesInterp
                 else:
-                    return merr, list(zip(time, phases))
+                    return mErr, list(zip(time, phases))
             else:
-                return merr, []
+                return mErr, []
         else:
             phaseFile = 'Phase.' + str(ID)
             try:
                 phaseData = np.genfromtxt(phaseFile)
-                merr = False
+                mErr = False
             except:
                 pass
             
-            if not(merr):
+            if not(mErr):
                 if not(len(phaseData.shape) == 1):
                     time = phaseData[:,0]
                     phases = phaseData[:,1]
@@ -650,15 +654,15 @@ class processFiles(object):
                     time = np.array(phaseData[0])
                     phases = np.array(phaseData[1])
 
-            if not(merr):
+            if not(mErr):
                 if (interp == True):
                     phasesInterp = np.interp(self.prsr.interpTime, time,
                                              phases) 
-                    return merr, phasesInterp
+                    return mErr, phasesInterp
                 else:
-                    return merr, list(zip(time, phases))
+                    return mErr, list(zip(time, phases))
             else:
-                return merr, []
+                return mErr, []
 
     def readNrTBFs(self, fileName):
         f = open(fileName, "r")

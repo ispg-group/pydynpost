@@ -189,6 +189,7 @@ class observables(object):
                     #print len(snapshot[1])
                     currCoord.append(snapshot[1][j][i])
                 #print currCoord
+                #print time, currCoord
                 interpCurrCoord = np.interp(self.prsr.interpTime, 
                                             time, currCoord).tolist()
                 interpCoords.append(interpCurrCoord) 
@@ -233,7 +234,6 @@ class observables(object):
             elif (rngInternal >= box[-1]):
                 iBox = self.prsr.nrBoxes
 
-        #print rngInternal, iBox
         return iBox
 
     def calcGaussianDensity(self, RNGcoord, TBFcoord, widths):
@@ -246,7 +246,7 @@ class observables(object):
                 if ((self.prsr.internalType == "X") or
                     (self.prsr.internalType == "Y")):
                     if j > 0:
-                        continue
+                        break
                 exponent -= 2 * alpha * (tmpCoord - RNGcoord[i][j+1])**2
                 prefactor *= np.sqrt(2 * alpha / np.pi)
         gaussianDensity = prefactor * np.exp(exponent)
@@ -263,7 +263,7 @@ class observables(object):
                 if ((self.prsr.internalType == "X") or
                     (self.prsr.internalType == "Y")):
                     if j > 0:
-                        continue
+                        break
                 exponent -= alpha * (tmpCoord - RNGcoord[i][j+1])**2
                 exponent += 1.0j * TBFmom[i][j] * (tmpCoord - RNGcoord[i][j+1])
                 prefactor *= np.sqrt(np.sqrt(2 * alpha / np.pi))
@@ -345,6 +345,8 @@ class observables(object):
            
 
             for iTBF, pop in enumerate(TBFpop):
+                if pop[t] < 1.e-12:
+                    continue
                 cumProb += pop[t] 
                 if eta <= cumProb:
                     rngCoord = self.sampleGeometry(TBFcoord[iTBF][t],widths,
@@ -437,6 +439,7 @@ class observables(object):
                     if iTBF == jTBF:
                         if TBFpop[iTBF][t] < 1.e-12:
                             continue
+                        #print iTBF + 1, jTBF + 1, TBFpop[iTBF][t], TBFpop[jTBF][t]
                         if self.prsr.internalType == "X":
                             tmpCoord = [TBFcoord[iTBF][t][0]]
                             tmpWidths = [widths[0]]
@@ -456,6 +459,7 @@ class observables(object):
                             continue
                         if not(TBFstt[iTBF] == TBFstt[jTBF]):
                             continue
+                        #print iTBF + 1, jTBF + 1, TBFpop[iTBF][t], TBFpop[jTBF][t]
                         widthX = widths[0]
                         widthY = widths[1]
                         if self.prsr.internalType == "X":
@@ -510,6 +514,8 @@ class observables(object):
                         addTerm = np.conj(TBFamp[iTBF][t]) * TBFamp[jTBF][t] 
                         addTerm *= overlap * np.conj(chiI) * chiJ
                         addTerm = 2 * np.real(addTerm)
+                        #if addTerm > 1.e-12:
+                        #    print addTerm
                         exactDens[iX] += addTerm
                         #print addTerm
 
@@ -528,15 +534,15 @@ class observables(object):
         spawnTimes, childIDs, parentIDs, numSpawns = self.psFile.findNrSpawns(tmpCWD)
         posErr, FGcoord = self.psFile.readPositions(1,tmpCWD,numParticles,
                                                     addAtmNames=False, bohr=True)
-        FGcoord = self.interpTraj(FGcoord, numParticles)
         momErr, FGmom = self.psFile.readMomenta(1,tmpCWD,numParticles,
                                                 addAtmNames=False)
-        FGmom = self.interpTraj(FGmom, numParticles)
         phaseErr, FGphase = self.psFile.getTBFphase(1,tmpCWD)
         TBFcoord = []
         TBFmom = []
         TBFphase = [] 
         if not(posErr or momErr or phaseErr):
+            FGcoord = self.interpTraj(FGcoord, numParticles)
+            FGmom = self.interpTraj(FGmom, numParticles)
             TBFcoord.append(FGcoord)
             TBFmom.append(FGmom)
             TBFphase.append(FGphase)
@@ -548,16 +554,16 @@ class observables(object):
                                                         False,
                                                         bohr=True
                                                         )
-            CHcoord = self.interpTraj(CHcoord, numParticles)
             posErr, CHmom = self.psFile.readMomenta(childID, 
                                                     tmpCWD,
                                                     numParticles,
                                                     addAtmNames=
                                                     False)
-            CHmom = self.interpTraj(CHmom, numParticles)
             phaseErr, CHphase = self.psFile.getTBFphase(childID,
                                                         tmpCWD)
             if not(posErr or momErr or phaseErr):
+                CHcoord = self.interpTraj(CHcoord, numParticles)
+                CHmom = self.interpTraj(CHmom, numParticles)
                 TBFcoord.append(CHcoord)
                 TBFmom.append(CHmom)
                 TBFphase.append(CHphase)
