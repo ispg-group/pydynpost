@@ -211,10 +211,10 @@ class observables(object):
             tmpRandCoord = [atmNames[i]]
             sigma = np.sqrt(1/(4 * widths[i])) 
             #print coord
-            for tmpCoord in coord:
+            for j, tmpCoord in enumerate(coord):
                 if ((self.prsr.internalType == "X") or
                     (self.prsr.internalType == "Y")):
-                    if np.abs(tmpCoord) <= 1.e-12:
+                    if j > 0:
                 #if np.abs(tmpCoord) <= 1.e-12:
                         tmpRandCoord.append(0.0)    
                         continue
@@ -255,7 +255,7 @@ class observables(object):
     def calcComplexGaussian(self, RNGcoord, TBFcoord, TBFmom, 
                             TBFphase, widths):
         exponent = 0
-        prefactor = np.exp(-1.0j * TBFphase)
+        prefactor = np.exp(1.0j * TBFphase)
         for i, coord in enumerate(TBFcoord):
             alpha = widths[i]  
 
@@ -264,8 +264,8 @@ class observables(object):
                     (self.prsr.internalType == "Y")):
                     if j > 0:
                         break
-                exponent -= alpha * (tmpCoord - RNGcoord[i][j+1])**2
-                exponent += 1.0j * TBFmom[i][j] * (tmpCoord - RNGcoord[i][j+1])
+                exponent -= alpha * (RNGcoord[i][j+1] - tmpCoord)**2
+                exponent += 1.0j * TBFmom[i][j] * (RNGcoord[i][j+1] - tmpCoord)
                 prefactor *= np.sqrt(np.sqrt(2 * alpha / np.pi))
         complexGaussian = prefactor * np.exp(exponent)
         return complexGaussian
@@ -283,7 +283,7 @@ class observables(object):
                                                            widths)
                 support += pop[t] * tmpGaussDensity
                 density += pop[t] * tmpGaussDensity
-                for jTBF in np.arange(iTBF+1, len(TBFpop)):
+                for jTBF in np.arange(0,iTBF):
                     if ((TBFstt[iTBF] == TBFstt[jTBF]) and
                        (TBFpop[jTBF][t] > 1.e-12)):
                         chiI = self.calcComplexGaussian(rngCoord,
@@ -392,7 +392,7 @@ class observables(object):
             summ += meanNew[i] 
 
         #assert abs(summ - 1.0) <= 1.e-12
-        #print summ
+        print summ
         #print nrSamples
         finalDensity = []
         for iBox, box in enumerate(self.prsr.boxes):
@@ -400,26 +400,23 @@ class observables(object):
                 finalDensity.append(meanNew[iBox]) 
 
         finalDensity = np.array(finalDensity)
-        #xaxis = self.prsr.boxes.flatten()
-        #saveFile = 'redDens_' + str(t) + '.dat'
-        #writeNPFile(2, saveFile, [xaxis, finalDensity], 
-        #            fmtStyle = "%30.18e %30.18e") 
-        #print nrSamples + nrFldTriesBlw + nrFldTriesAbv
+        xaxis = self.prsr.boxes.flatten()
+        saveFile = 'redDens_' + str(t) + '.dat'
+        writeNPFile(2, saveFile, [xaxis, finalDensity], 
+                    fmtStyle = "%30.18e %30.18e") 
+        print nrSamples + nrFldTriesBlw + nrFldTriesAbv
         return finalDensity
 
     def calcOverlap(self, xi, xj, pi, pj, gammaI, gammaJ, 
                     alpha):
-        #prefactor = np.power(2 * alpha, 0.25)
         deltaXij = xi - xj 
         deltaPij = pi - pj 
         real = -0.5 * alpha * deltaXij**2  
-        real -= (1./8.) * (deltaPij**2/alpha)
-        centroid = (xi + xj) / 2.
+        real -= 0.125 * (deltaPij**2/alpha)
+        centroid = 0.5 * (xi + xj) 
         imag = (pi*xi - pj*xj) - centroid * deltaPij
-        imag += gammaJ - gammaI
         exponent = real + 1.j * imag
         overlap = np.exp(exponent)
-        #print overlap
         return overlap
              
     def calcExactDensity(self, currCWD, t, TBFcoord, TBFmom, 
@@ -429,96 +426,105 @@ class observables(object):
         xaxis = np.unique(self.prsr.boxes.flatten())
         exactDens = np.zeros(xaxis.size)
         for iX, x in enumerate(xaxis):
-            for iTBF, ampI in enumerate(TBFamp):
-                for jTBF in np.arange(iTBF,len(TBFamp)):
+            fullDens = 0 
+            nonOv = 0
+            for iTBF in np.arange(len(TBFamp)):
+                if self.prsr.internalType == "X":
+                    tmpCoord = [TBFcoord[iTBF][t][0]]
+                    tmpWidths = [widths[0]]
+                    currCoord = [['QQ1', x, 0.0, 0.0]]
+                elif self.prsr.internalType == "Y":
+                    tmpCoord = [TBFcoord[iTBF][t][1]]
+                    tmpWidths = [widths[1]]
+                    currCoord = [['PP2', x, 0.0, 0.0]]
+                gaussianDensity = self.calcGaussianDensity(
+                                                 currCoord,
+                                                 tmpCoord,
+                                                 tmpWidths
+                                                 )
+                exactDens[iX] += TBFpop[iTBF][t] * gaussianDensity 
+                fullDens += TBFpop[iTBF][t]
+                nonOv += TBFpop[iTBF][t]
+                for jTBF in np.arange(0,iTBF):
+                    if TBFpop[iTBF][t] < 1.e-12:
+                        continue
+                    if TBFpop[jTBF][t] < 1.e-12:
+                        continue
+                    if not(TBFstt[iTBF] == TBFstt[jTBF]):
+                        continue
+                    #if self.prsr.interpTime[t] == 200: 
+                    #    print iTBF, TBFpop[iTBF][t], jTBF, TBFpop[jTBF][t]
+                    #print iTBF + 1, jTBF + 1, TBFpop[iTBF][t], TBFpop[jTBF][t]
+                    widthX = widths[0]
+                    widthY = widths[1]
+                    overlapX = self.calcOverlap(
+                              TBFcoord[iTBF][t][0][0],
+                              TBFcoord[jTBF][t][0][0],
+                              TBFmom[iTBF][t][0][0],
+                              TBFmom[jTBF][t][0][0],
+                              TBFphase[iTBF][t],
+                              TBFphase[jTBF][t],
+                              widthX
+                              ) 
+                    overlapY = self.calcOverlap(
+                              TBFcoord[iTBF][t][1][0],
+                              TBFcoord[jTBF][t][1][0],
+                              TBFmom[iTBF][t][1][0],
+                              TBFmom[jTBF][t][1][0],
+                              TBFphase[iTBF][t],
+                              TBFphase[jTBF][t],
+                              widthY
+                              ) 
                     if self.prsr.internalType == "X":
-                        currCoord = [['QQ1', x, 0.0, 0.0]]
+                        overlap = overlapY
+                        chiI = self.calcComplexGaussian(
+                               currCoord,
+                               [TBFcoord[iTBF][t][0]],
+                               [TBFmom[iTBF][t][0]],
+                               TBFphase[iTBF][t],
+                               [widthX]
+                               )
+                        chiJ = self.calcComplexGaussian(
+                               currCoord,
+                               [TBFcoord[jTBF][t][0]],
+                               [TBFmom[jTBF][t][0]],
+                               TBFphase[jTBF][t],
+                               [widthX]
+                               )
+                        
                     elif self.prsr.internalType == "Y":
-                        currCoord = [['PP2', x, 0.0, 0.0]]
+                        overlap = overlapX
+                        chiI = self.calcComplexGaussian(
+                               currCoord,
+                               [TBFcoord[iTBF][t][1]],
+                               [TBFmom[iTBF][t][1]],
+                               TBFphase[iTBF][t],
+                               [widthY]
+                               )
+                        chiJ = self.calcComplexGaussian(
+                               currCoord,
+                               [TBFcoord[jTBF][t][1]],
+                               [TBFmom[jTBF][t][1]],
+                               TBFphase[jTBF][t],
+                               [widthY]
+                               )
+                    addTerm = 0
+                    addTerm = np.conj(TBFamp[iTBF][t]) * TBFamp[jTBF][t] 
+                    addTerm *= overlap * np.conj(chiI) * chiJ
+                    addTerm = 2 * np.real(addTerm)
+                    add2Term = 2 * np.real(np.conj(TBFamp[iTBF][t]) * TBFamp[jTBF][t]
+                                            * overlapX * overlapY* np.exp(1.j*(TBFphase[jTBF][t] - TBFphase[iTBF][t])))
+                    #if self.prsr.interpTime[t] == 200: 
+                    #    print add2Term
+                    #    print np.conj(TBFamp[iTBF][t]), TBFamp[jTBF][t]
+                    #    print iTBF, jTBF
+                    fullDens += add2Term  
+                    #if addTerm > 1.e-12:
+                    #    print iTBF, jTBF, addTerm
+                    exactDens[iX] += addTerm
+                    #print addTerm
 
-                    if iTBF == jTBF:
-                        if TBFpop[iTBF][t] < 1.e-12:
-                            continue
-                        #print iTBF + 1, jTBF + 1, TBFpop[iTBF][t], TBFpop[jTBF][t]
-                        if self.prsr.internalType == "X":
-                            tmpCoord = [TBFcoord[iTBF][t][0]]
-                            tmpWidths = [widths[0]]
-                        elif self.prsr.internalType == "Y":
-                            tmpCoord = [TBFcoord[iTBF][t][1]]
-                            tmpWidths = [widths[1]]
-                        gaussianDensity = self.calcGaussianDensity(
-                                                         currCoord,
-                                                         tmpCoord,
-                                                         tmpWidths
-                                                         )
-                        exactDens[iX] += TBFpop[iTBF][t] * gaussianDensity 
-                    else:
-                        if TBFpop[iTBF][t] < 1.e-12:
-                            continue
-                        if TBFpop[jTBF][t] < 1.e-12:
-                            continue
-                        if not(TBFstt[iTBF] == TBFstt[jTBF]):
-                            continue
-                        #print iTBF + 1, jTBF + 1, TBFpop[iTBF][t], TBFpop[jTBF][t]
-                        widthX = widths[0]
-                        widthY = widths[1]
-                        if self.prsr.internalType == "X":
-                            overlap = self.calcOverlap(
-                                      TBFcoord[iTBF][t][1][0],
-                                      TBFcoord[jTBF][t][1][0],
-                                      TBFmom[iTBF][t][1][0],
-                                      TBFmom[jTBF][t][1][0],
-                                      TBFphase[iTBF][t],
-                                      TBFphase[jTBF][t],
-                                      widthY
-                                      ) 
-                            chiI = self.calcComplexGaussian(
-                                   currCoord,
-                                   [TBFcoord[iTBF][t][0]],
-                                   [TBFmom[iTBF][t][0]],
-                                   TBFphase[iTBF][t],
-                                   [widthX]
-                                   )
-                            chiJ = self.calcComplexGaussian(
-                                   currCoord,
-                                   [TBFcoord[jTBF][t][0]],
-                                   [TBFmom[jTBF][t][0]],
-                                   TBFphase[jTBF][t],
-                                   [widthX]
-                                   )
-                            
-                        elif self.prsr.internalType == "Y":
-                            overlap = self.calcOverlap(
-                                      TBFcoord[iTBF][t][0][0],
-                                      TBFcoord[jTBF][t][0][0],
-                                      TBFmom[iTBF][t][0][0],
-                                      TBFmom[jTBF][t][0][0],
-                                      TBFphase[iTBF][t],
-                                      TBFphase[jTBF][t],
-                                      widthX
-                                      ) 
-                            chiI = self.calcComplexGaussian(
-                                   currCoord,
-                                   [TBFcoord[iTBF][t][1]],
-                                   [TBFmom[iTBF][t][1]],
-                                   TBFphase[iTBF][t],
-                                   [widthY]
-                                   )
-                            chiJ = self.calcComplexGaussian(
-                                   currCoord,
-                                   [TBFcoord[jTBF][t][1]],
-                                   [TBFmom[jTBF][t][1]],
-                                   TBFphase[jTBF][t],
-                                   [widthY]
-                                   )
-                        addTerm = np.conj(TBFamp[iTBF][t]) * TBFamp[jTBF][t] 
-                        addTerm *= overlap * np.conj(chiI) * chiJ
-                        addTerm = 2 * np.real(addTerm)
-                        #if addTerm > 1.e-12:
-                        #    print addTerm
-                        exactDens[iX] += addTerm
-                        #print addTerm
-
+            #print fullDens, nonOv, nonOv - 1
         intgrl = integrate.simps(exactDens, xaxis)
         print 'int', intgrl
         saveFile = 'exactRedDens_' + str(t) + '.dat'
@@ -532,8 +538,14 @@ class observables(object):
     def calcCoherentExpectationValue(self, tmpCWD, saveStringParams, TBFpop, TBFamp):
         numParticles = self.psFile.findNumAtoms(tmpCWD)
         spawnTimes, childIDs, parentIDs, numSpawns = self.psFile.findNrSpawns(tmpCWD)
-        posErr, FGcoord = self.psFile.readPositions(1,tmpCWD,numParticles,
-                                                    addAtmNames=False, bohr=True)
+        if ((self.prsr.internalType == "X") or
+            (self.prsr.internalType == "Y")):
+            posErr, FGcoord = self.psFile.readPositions(1,tmpCWD,numParticles,
+                                                        addAtmNames=False)
+        else:
+            posErr, FGcoord = self.psFile.readPositions(1,tmpCWD,numParticles,
+                                                        addAtmNames=False, 
+                                                        bohr=True)
         momErr, FGmom = self.psFile.readMomenta(1,tmpCWD,numParticles,
                                                 addAtmNames=False)
         phaseErr, FGphase = self.psFile.getTBFphase(1,tmpCWD)
@@ -547,13 +559,22 @@ class observables(object):
             TBFmom.append(FGmom)
             TBFphase.append(FGphase)
         for childID in childIDs:
-            posErr, CHcoord = self.psFile.readPositions(childID, 
-                                                        tmpCWD,
-                                                        numParticles,
-                                                        addAtmNames=
-                                                        False,
-                                                        bohr=True
-                                                        )
+            if ((self.prsr.internalType == "X") or
+                (self.prsr.internalType == "Y")):
+                posErr, CHcoord = self.psFile.readPositions(childID, 
+                                                            tmpCWD,
+                                                            numParticles,
+                                                            addAtmNames=
+                                                            False
+                                                            )
+            else:
+                posErr, CHcoord = self.psFile.readPositions(childID, 
+                                                            tmpCWD,
+                                                            numParticles,
+                                                            addAtmNames=
+                                                            False,
+                                                            bohr=True
+                                                            )
             posErr, CHmom = self.psFile.readMomenta(childID, 
                                                     tmpCWD,
                                                     numParticles,
