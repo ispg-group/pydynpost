@@ -1,12 +1,8 @@
 #!/usr/bin/env python
 import numpy as np
-from matplotlib import pyplot as plt
 import abc
 from abc import ABCMeta
 import os
-from matplotlib import cm
-import matplotlib as mpl
-import math
 import copy
 from filesys import *
 from misc import *

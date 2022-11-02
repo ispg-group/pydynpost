@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
 import os
-import math
 from filesys import *
 from misc import *
 from parse import *

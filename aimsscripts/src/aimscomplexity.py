@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
-from matplotlib import pyplot as plt
 import os
-from matplotlib import cm
-import matplotlib as mpl
-import math
 from filesys import *
 from misc import *
 from parse import *
