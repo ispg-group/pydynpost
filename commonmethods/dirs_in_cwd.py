@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import os
 import numpy as np
 def get_dirs(inp_dir):

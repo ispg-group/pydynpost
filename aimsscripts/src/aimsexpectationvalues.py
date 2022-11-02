@@ -1,4 +1,4 @@
-#!/usr/local/Cluster-Apps/python/2.7.9/bin/python
+#!/usr/bin/env python
 import numpy as np
 from matplotlib import pyplot as plt
 import abc
@@ -400,10 +400,10 @@ class observables(object):
                 finalDensity.append(meanNew[iBox]) 
 
         finalDensity = np.array(finalDensity)
-        xaxis = self.prsr.boxes.flatten()
-        saveFile = 'redDens_' + str(t) + '.dat'
-        writeNPFile(2, saveFile, [xaxis, finalDensity], 
-                    fmtStyle = "%30.18e %30.18e") 
+        #xaxis = self.prsr.boxes.flatten()
+        #saveFile = 'redDens_' + str(t) + '.dat'
+        #writeNPFile(2, saveFile, [xaxis, finalDensity], 
+        #            fmtStyle = "%30.18e %30.18e") 
         print nrSamples + nrFldTriesBlw + nrFldTriesAbv
         return finalDensity
 

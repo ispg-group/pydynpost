@@ -1,4 +1,4 @@
-#!/usr/local/Cluster-Apps/python/2.7.9/bin/python
+#!/usr/bin/env python
 import numpy as np
 from matplotlib import pyplot as plt
 import os
