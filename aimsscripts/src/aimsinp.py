@@ -14,27 +14,27 @@ def initParser(parser):
 
     parser.addInput("geomDir", "What is the common IC directrory name?")
     if not(hasattr(parser, "geomDir")): 
-        parser.addd("geomDir", "geom")
+        parser.addInternal("geomDir", "geom")
     parser.addInput("AIMStype", "What AIMS type was used?")
     if (("population" in parser.todo) or ("coupling" in parser.todo)):
         parser.addInput("nrStates", "How many states?")
     parser.addInput("maxTime", "What is the largest time step?")
     parser.addInput("step", "Which resolution do you want?")
-    parser.addd("interpTime", np.arange(0, parser.maxTime + parser.step, 
+    parser.addInternal("interpTime", np.arange(0, parser.maxTime + parser.step, 
                                         parser.step))
 
     if parser.AIMStype != "AIMS":
         parser.addInput("nrRNGs", "How many rngs?")
         parser.addInput("RNGdir", "What is the common RNG directory name?")
         if not(hasattr(parser, "RNGdir")): 
-            parser.addd("RNGdir", "rng")
+            parser.addInternal("RNGdir", "rng")
 
     parser.addInput("sampleSize", "How many ICs?")
     parser.addInput("duplicatesExist", "Do duplicates exist?")
     if parser.duplicatesExist in ["y", "yes"]:
         parser.addInput("dupList", "Duplicates:", arr = True)
     else: 
-        parser.addd("dupList", [])
+        parser.addInternal("dupList", [])
 
     if "internals" in parser.todo:
         parser.addInput("internalType", "Which kind of internal is it?")

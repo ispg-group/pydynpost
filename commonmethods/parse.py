@@ -3,6 +3,7 @@ from __future__ import print_function
 import numpy as np
 import os
 import sys
+import const
 from stringmanip import * 
 from misc import *
 
@@ -12,23 +13,13 @@ try:
 except:
     importedPromptTK = False 
 
-class userInput(object):
-    def __setattr__(self, name, value):                                                                                                                                                                                                                             
-        if name in self.__dict__:
-            raise ValueError("cannot change a const attribute")
-        self.__dict__[name] = value 
-                                    
-    def __delattr__(self, name):
-        if name in self.__dict__:
-            raise ValueError("cannot delete a const attribute")
-        raise AttributeError("'{0}' object has no attribute '{1}'".format(
-                             self.__class__.__name__, name))
 
 class parseInput(object):
     def __init__(self, inputFileName, CWD):
-        self.usrInput = userInput() 
+        self.usrInput = const.const() 
         self.inpFName = inputFileName
         self.CWD      = CWD
+        self.addInternal("CWD", CWD)
 
     def _formatParseQ(self, question, totL = 5):
         questionLen = len(question) 
@@ -37,7 +28,7 @@ class parseInput(object):
             question += "\t"
         return question 
 
-    def addd(self, name, value):                                                                                                                                                                                                                             
+    def addInternal(self, name, value):                                                                                                                                                                                                                             
         self.usrInput.__setattr__(name, value)
 
     def addInput(self, variableName, question, arr = None, totL = 5):
