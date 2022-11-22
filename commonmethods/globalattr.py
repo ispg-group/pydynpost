@@ -14,7 +14,7 @@ class globalClass(object):
             return self.__dict__[name]
         else:
             raise AttributeError(
-                'Attribute not found in {0} and global class!'.format(
-                    self.__class__.__name__
+                'Attribute {0} not found in {1} and global class!'.format(
+                    name, self.__class__.__name__
                 )
             )
