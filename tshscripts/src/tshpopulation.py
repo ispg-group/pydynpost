@@ -6,6 +6,8 @@ from misc import *
 from parse import *
 from aimsinp import *
 
+def getPopulation(drivingState, nrStates):
+
 class statePopulations(object):
     """ Class handling the calculation of adiabatic 
         electronic state populations. """

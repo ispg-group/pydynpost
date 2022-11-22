@@ -1,12 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
-import os
-from filesys import *
-from misc import *
-from parse import *
-from aimsinp import *
 
-def writeNPFile(nrColumns, fileName, content, fmtStyle = None):
+def writeNPFile(fileName, nrColumns, content, fmtStyle = None):
     saveFormat      = np.zeros((content[0].size, nrColumns))
     for i in np.arange(nrColumns):
         saveFormat[:,i] = content[i]
@@ -34,5 +29,3 @@ def writeGridFile(fileName, grid, scalars, numScalars, header):
                                                                     i]))
                 gridFile.write('\n')
             gridFile.write('\n')
-
-               

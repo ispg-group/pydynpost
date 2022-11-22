@@ -5,7 +5,7 @@ from filesys import *
 from misc import *
 from parse import *
 from internals import *
-from aimssave import *
+from writefiles import *
 
 class internals(object): 
     def __init__(self, parser, cwd, psFile):

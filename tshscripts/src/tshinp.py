@@ -6,7 +6,7 @@ from misc import *
 from parse import *
 
 def initParser(parser):
-    parser.addInput("code", "Which tsh code did you use")
+    parser.addInput("pckg", "Which tsh code did you use")
     parser.addInput("todo", "What do you want to do?", arr = True)
 
     parser.addInput("geomDir", "What is the common IC directrory name?")

@@ -2,11 +2,47 @@
 import numpy as np
 import os
 import abc
-import files 
+import readfiles 
 from abc import ABCMeta
 from filesys import *
 from misc import *
 from parse import *
+
+
+class readPopulation:
+
+    def __init__(self, pkcg, CWD, geom, geomDir, 
+                 rng=None, rngDir=None):
+        self.pckg = pckg
+        self.fileRoot = CWD
+        if not((rng == None) or (rngDir == None)):
+            self.fileRoot += "/" + RNGdir + str(rng)
+        self.fileRoot += "/" + geomDir + str(geom) + "/" 
+        readerName = 'read' + self.pckg + 'Population'
+        population = getattr(self, readerName)()
+        return population
+    
+    def readABINPopulation(self):
+
+        with open(self.fileRoot + 'abin.out', 'r') as initLines:
+            for initLine in initLines:
+                if 'ISTATE_INIT' in initLine: 
+                    initState = int(initLine.strip().split()[-1][:-1])
+        popFileName = self.fileRoot + 'pop.out'
+        keyIndexPair = {'time': 0, 'state': 1}
+        popData = readfiles.readNPfile(popFileName, keyIndexPair)
+        time = np.zeros(popData['time'].size + 1)
+        state = np.zeros(popData['time'].size + 1)
+        time[0] = 0.0
+        time[1:] = popData['time']
+        state[0] = initState
+        state[1:] = popData['state']
+
+        return state
+
+
+    def readNEWTONXPopulation(self):
+def readSHARCPopulation(self): 
 
 class processFiles(object):
     __metaclass__ = ABCMeta
@@ -223,7 +259,7 @@ class processFilesABIN(processFiles):
     def addPositions(self, initFileName, trajFileName, nrAtoms, outTraj):
         readTimestep = lambda a: float(a[-1]) 
         outTraj.append(self.addInitGeom(initFileName, nrAtoms))
-        outTraj[-1].extend(files.addTraj(trajFileName, nrAtoms, readTimestep))
+        outTraj[-1].extend(readfiles.addTraj(trajFileName, nrAtoms, readTimestep))
 
     def getNrAtoms(self, fileName):
         with open(fileName, "r") as geomLines:
