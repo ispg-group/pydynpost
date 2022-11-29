@@ -6,18 +6,22 @@ The main motivation of this project is to gather all scripts necessary for data 
 
 ## What can it do?
 
+The following table
 
-| **Observables / metrics**            |      **AIMS**      |      **TSH**       |
-|-------------------------------------:|:------------------:|:------------------:|
-| State population                     | :heavy_check_mark: | :heavy_check_mark: |
-| Incoherent internals                 | :heavy_check_mark: | :heavy_check_mark: |
-| Coherent internals                   | :heavy_check_mark: |     :question:     |
-| Molecular population                 | :heavy_check_mark: | :heavy_check_mark: |
-| Comput. complexity & N<sub>TBF</sub> | :heavy_check_mark: |     :question:     |
+| **Observables / metrics**            |      **AIMS**      |      **TSH**       |        **Task name** (*)          |
+|-------------------------------------:|:------------------:|:------------------:|:---------------------------------:|
+| State population                     | :heavy_check_mark: | :heavy_check_mark: |      `population`                 |
+| Incoherent internals                 | :heavy_check_mark: | :heavy_check_mark: |      `internals`                  |
+| Coherent internals                   | :heavy_check_mark: |     :question:     |      `internals`                  |
+| Molecular population                 | :heavy_check_mark: | :heavy_check_mark: |      `molpop`                     |
+| Comput. complexity & N<sub>TBF</sub> | :heavy_check_mark: |     :question:     |      `complexity`                 |
+| Stochastic slections                 | :heavy_check_mark: |     :question:     |      `selection`                  |
 
 :heavy_check_mark: = Accesible and implemented
 
 :question: = Unaccesible or trivial
+
+(*) This value is read into the `todo` variable. See section **Input parameters** for more information.
 
 ## Using pydynpost
 
@@ -44,9 +48,27 @@ nrRNGs          = 0
 sampleSize      = 2
 maxTime         = 188.19
 step            = 0.1
-duplicatesExist = n
-dupList         =
 ```
 
 ## Input parameters
+
+### General:
+
+|  **Input variable name**    |       **Description**                |   **Possible options** | 
+|:----------------------------|:-------------------------------------|:----------------------:|
+| `dynMethod`                 |  Dynamics method                     |      `tsh` or `aims`   |
+| `pckg` (only in aims)       |  Electronic structure interface      |      `tc` or `molpro`  |
+| `code` (only in tsh)        |  Implementation of TSH               |        `ABIN`          |
+| `todo`                      |  Observable / metric to be calcuated |      see (*)           |
+| `sampleSize`                |  Number of intial conditions (ICs)   |       any `int`        |
+| `nrRNGs`                    |  Number of runs per IC               |       any `int`        |
+
+
+### Directory names: 
+
+|  **Input variable name**           |       **Description**          | 
+|:-----------------------------------|:-------------------------------|
+| `outputDir` (only for aims+molpro) |   molpro subdirectory          |
+| `geomDir`                          |   initial condition directory  |
+| `RNGDir`                           |   rng seed directory           |
 
