@@ -1,6 +1,6 @@
 ## What is pydynpost? 
 
-pydynpost is a set of postproccessing scripts for both *ab initio* multiple spawning (AIMS) and trajectory surface hopping (TSH) methods.
+pydynpost is a set of postprocessing scripts for both *ab initio* multiple spawning (AIMS) and trajectory surface hopping (TSH) methods.
 The main motivation of this project is to gather all scripts necessary for data analysis of a previously performed nonadiabatic dynamics in one place. It features a high degree of modularity, allowing for inclusion of new functionality by simply adding a reference to it in the 
 [aimsmodandmet.py](https://github.com/ispg-group/pydynpost/blob/master/aimsscripts/src/aimsmodandmet.py) / [tshmodandmet.py](https://github.com/ispg-group/pydynpost/blob/master/tshscripts/src/tshmodandmet.py) dictionary.
 
@@ -26,7 +26,7 @@ pydynpost assumes that you are in a directory that contains the outputs of the n
    - For AIMS and TSH (without repetitions): `./${IC}m/`  (`${IC}` is arbitrary, e.g. `geom_`; `m` is an index for the initial condition)
    - For AIMSWISS / SSAIMS and TSH (with repetitons):  `./${RNG}n/${IC}m/`, (`${RNG}` is arbitrary, e.g. `rng`; `n` is an index for the run)
    
-From within this working directory the postproccessing script can be launched by typing
+From within this working directory the postprocessing script can be launched by typing
 
 ```
   pydynpost
