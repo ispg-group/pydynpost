@@ -38,10 +38,6 @@ after which you enter interactive mode, in which the input parameters are parsed
 dynMethod       = tsh
 code            = ABIN
 todo            = population
-internalName    = Cr1-C2
-dissPartners    = Cr-C
-thresh          = 0.10335104202
-internalType    = bl
 geomDir         = geom_
 nrStates        = 6
 nrRNGs          = 0
