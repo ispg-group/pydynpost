@@ -56,19 +56,47 @@ step            = 0.1
 
 |  **Input variable name**    |       **Description**                |   **Possible options** | 
 |:----------------------------|:-------------------------------------|:----------------------:|
-| `dynMethod`                 |  Dynamics method                     |      `tsh` or `aims`   |
-| `pckg` (only in aims)       |  Electronic structure interface      |      `tc` or `molpro`  |
+| `dynMethod`                 |  Dynamics method                     |   `tsh` or `aims`      |
+| `pckg` (only in aims)       |  Electronic structure interface      |  ` tc` or `molpro`     |
 | `code` (only in tsh)        |  Implementation of TSH               |        `ABIN`          |
 | `todo`                      |  Observable / metric to be calcuated |      see (*)           |
-| `sampleSize`                |  Number of intial conditions (ICs)   |       any `int`        |
-| `nrRNGs`                    |  Number of runs per IC               |       any `int`        |
+| `sampleSize`                |  Number of intial conditions (ICs)   |         `int`          |
+| `nrRNGs`                    |  Number of runs per IC               |         `int`          |
+| `maxTime`                   |  Maximum simulation time             |        `float`         |
+| `step`                      |  Time between frames                 |        `float`         |
+| `duplicatesExist`           |  Ignore certain ICs                  |        `y` or `n`      |
+| `dupList`                   |  List of ignored ICs                 |      `int, int, ...`   |
 
 
 ### Directory names: 
 
-|  **Input variable name**           |       **Description**          | 
-|:-----------------------------------|:-------------------------------|
-| `outputDir` (only for aims+molpro) |   molpro subdirectory          |
-| `geomDir`                          |   initial condition directory  |
-| `RNGDir`                           |   rng seed directory           |
+|  **Input variable name**           |       **Description**          |   **Possible options** | 
+|:-----------------------------------|:-------------------------------|:----------------------:|
+| `outputDir` (only for aims+molpro) |   molpro subdirectory          |          `str`         |
+| `geomDir`                          |   initial condition directory  |          `str`         |
+| `RNGDir`                           |   rng seed directory           |          `str`         |
+
+### Population:
+
+|  **Input variable name**  |       **Description**          | 
+|:--------------------------|:-------------------------------|
+|  `nrStates`               |   Number of electronic states  |
+
+### Internals:
+
+|  **Input variable name**           |       **Description**          |   **Possible options**      | 
+|:-----------------------------------|:-------------------------------|:----------------------------|
+| `internalType`                     |  Internal coordinate type      |   `bl`, `ba`, or `td`   |
+| `internalName`                     |  Name of contributing atoms    |   `a1-a2` (bl) <br> `a1-a2-a3` (ba) <br> `a1-a2-a3-a4` (td) |
+| `expecType` (only in aims)         |  Way of calculating internal   |  `incoherent` or `coherent` |
+
+If `expecType = coherent` then there are additional parameters determining the range and resolution of the nuclear density along the specified internal:
+
+|  **Input variable name**  |       **Description**          |   **Possible options** | 
+|:--------------------------|:-------------------------------|:----------------------:|
+| `expecMin`                |   Minimum value of internal    |        `float`         |
+| `expecMax`                |   Maxmimum value of internal   |        `float`         |
+| `nrBoxes`                 |   Number of histogram boxes    |         `int`          |
+
+### Molecular population:
 
