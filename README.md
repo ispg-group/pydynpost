@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7382636.svg)](https://doi.org/10.5281/zenodo.7382636)
+
 ## What is pydynpost? 
 
 pydynpost is a set of postprocessing scripts for both *ab initio* multiple spawning (AIMS) and trajectory surface hopping (TSH) methods.
