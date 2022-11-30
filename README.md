@@ -86,7 +86,7 @@ step            = 0.1
 
 |  **Input variable name**           |       **Description**          |   **Possible options**      | 
 |:-----------------------------------|:-------------------------------|:----------------------------|
-| `internalType`                     |  Internal coordinate type      |   `bl`, `ba`, or `td`   |
+| `internalType`                     |  Internal coordinate type      |   `bl`, `ba`, or `td`       |
 | `internalName`                     |  Name of contributing atoms    |   `a1-a2` (bl) <br> `a1-a2-a3` (ba) <br> `a1-a2-a3-a4` (td) |
 | `expecType` (only in aims)         |  Way of calculating internal   |  `incoherent` or `coherent` |
 
@@ -100,3 +100,8 @@ If `expecType = coherent` then there are additional parameters determining the r
 
 ### Molecular population:
 
+|  **Input variable name**  |       **Description**            |   **Possible options** | 
+|:--------------------------|:---------------------------------|:----------------------:|
+| `internalType`            |  Internal coordinate type        |   `bl`, `ba`, or `td`  |
+| `dissPartners`            |  Atoms involved in dissociation  |        `a1-a2`         |
+| `thresh`                  |  Dissociation threshold          |        `float`         |
