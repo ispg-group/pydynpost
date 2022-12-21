@@ -7,7 +7,6 @@ import globalattr as glAttr
 class Leaf(glAttr.globalClass):
     def __init__(self, glbl, geom, rng):
         super().__init__(glbl)
-        self.glbl = glbl
         self.geom = geom
         self.geom = rng
 

@@ -10,10 +10,9 @@ class Branch(glAttr.globalClass):
     def __init__(self, glbl, geom):
 
         super().__init__(glbl)
-        self.glbl = glbl
         self.geom = geom
         if hasattr(self, 'nrRNGs'):
-            self.leaves = leaf.getSimpleIterator(self.glbl, geom) 
+            self.leaves = leaf.getSimpleIterator(glbl, geom) 
         self.leaves = []
 
     def getMetric(self, metric):

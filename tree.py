@@ -10,8 +10,7 @@ class Tree(glAttr.globalClass):
     def __init__(self, glbl):
 
         super().__init__(glbl)
-        self.glbl = glbl
-        self.branches = branch.getSimpleIterator(self.glbl)
+        self.branches = branch.getSimpleIterator(glbl)
 
     def getIBExpectation(self, metric):
 
@@ -52,8 +51,7 @@ if __name__ == '__main__':
     cwd = os.getcwd()
     parser = parse.parseInput("dynpost.inp", cwd)
     parser.addInput("dynMethod", "Which dynamics method was used?")
-    inpName = parser.dynMethod + "inp"
-    inpModule = importlib.import_module(inpName)
-    parser = inpModule.initParser(parser) 
+    import commoninp
+    parser = commoninp.initParser(parser) 
     pcFMS = Tree(parser)
     pcFMS.getIBExpectation('population')
