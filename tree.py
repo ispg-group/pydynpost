@@ -5,25 +5,37 @@ import numpy as np
 import globalattr as glAttr
 import branch
 
-class Superbranch(glAttr.globalClass):
+class Tree(glAttr.globalClass):
+
     def __init__(self, glbl):
+
         super().__init__(glbl)
-        self.branches = branch.getSimpleIterator(glbl)
+        self.glbl = glbl
+        self.branches = branch.getSimpleIterator(self.glbl)
 
     def getIBExpectation(self, metric):
+
         partialSum = 0.0
         partialSquareSum = 0.0
 
         for branch in self.branches:
-            tmpSummand = branch.getMetric(metric)
-            tmpSquareSummand = tmpSummand ** 2 
-            partialSum += tmpSummand
-            partialSquareSum += tmpSquareSummand
+
+            summand = branch.getMetric(metric)
+            squareSummand = summand ** 2 
+
+            for leaf in branch.leaves:
+                tmpSummand = leaf.getMetric(metric) 
+                summand += tmpSummand
+                squareSummand += tmpSummand ** 2 
+
+
+            partialSum += summand
+            partialSquareSum += squareSummand
 
         if hasattr(self, 'nrRNGs'):
             totNrSamples = self.nrUnqSamples * self.nrRNGs 
-        else:
-            totNrSamples = self.nrUnqSamples
+
+        totNrSamples = self.nrUnqSamples
 
         mTimeTrace = partialSum / totNrSamples 
         stdTimeTrace = partialSquareSum / totNrSamples - mTimeTrace**2 
@@ -32,6 +44,7 @@ class Superbranch(glAttr.globalClass):
         return mTimeTrace, stdTimeTrace
     
     def propagatePost(self):
+
         pass
 
 if __name__ == '__main__':
@@ -42,5 +55,5 @@ if __name__ == '__main__':
     inpName = parser.dynMethod + "inp"
     inpModule = importlib.import_module(inpName)
     parser = inpModule.initParser(parser) 
-    pcFMS = Superbranch(parser)
+    pcFMS = Tree(parser)
     pcFMS.getIBExpectation('population')

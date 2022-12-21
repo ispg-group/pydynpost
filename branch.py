@@ -3,52 +3,42 @@ import os
 import importlib
 import numpy as np
 import globalattr as glAttr
+import leaf
 
 class Branch(glAttr.globalClass):
-    def __init__(self, glbl, geom, rng=None):
+
+    def __init__(self, glbl, geom):
+
         super().__init__(glbl)
+        self.glbl = glbl
         self.geom = geom
-        self.rng = rng
+        if hasattr(self, 'nrRNGs'):
+            self.leaves = leaf.getSimpleIterator(self.glbl, geom) 
+        self.leaves = []
 
     def getMetric(self, metric):
+
+        if hasattr(self, 'nrRNGs'): 
+            return 0.0
+
         metricModule = importlib.import_module(metric)
         getMetric = getattr(metricModule, 'get' + metric)
-        if self.rng != None:
-            metric = getMetric(self.dynMethod, self.pckg, self.CWD,
-                               self.geom, self.geomDir, self.rng,
-                               self.rngDir)
-        else:
-            metric = getMetric(self.dynMethod, self.pckg, self.CWD,
-                               self.geom, self.geomDir)
+        metric = getMetric(self.dynMethod, self.pckg, self.CWD,
+                           self.geom, self.geomDir)
         return metric
-        
+
 
 def getSimpleIterator(glbl):
-    rngLoop = False
-    if glbl.dynMethod == 'tsh': 
-        if hasattr(glbl, 'nrRNGs'):
-            rngLoop = True
-    elif glbl.dynMethod == 'aims':
-        if glbl.AIMStype != 'AIMS':
-            assert hasattr(glbl, 'nrRNGs') 
-            rngLoop = True
 
     def branchSimpleIterator():
+
         for geom in range(1, glbl.sampleSize + 1):
             if geom in glbl.dupList:
                 continue
 
-            if rngLoop:
-                for rng in range(1, glbl.nrRNGs + 1):
-                    print(geom, rng)
-                    currBranch = Branch(glbl, geom, rng=rng)
-                    yield currBranch 
-            else:
-                currBranch = Branch(glbl, geom)
-                yield currBranch 
+            currBranch = Branch(glbl, geom)
+            yield currBranch
             
-    bIterator = branchSimpleIterator()
+    simpleIterator = branchSimpleIterator()
          
-    return bIterator 
-
-
+    return simpleIterator 
