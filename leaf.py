@@ -7,15 +7,14 @@ import globalattr as glAttr
 class Leaf(glAttr.globalClass):
     def __init__(self, glbl, geom, rng):
         super().__init__(glbl)
+        self.glbl = glbl
         self.geom = geom
         self.geom = rng
 
     def getMetric(self, metric):
         metricModule = importlib.import_module(metric)
         getMetric = getattr(metricModule, 'get' + metric)
-        metric = getMetric(self.dynMethod, self.pckg, self.CWD,
-                           self.geom, self.geomDir, self.rng,
-                           self.rngDir)
+        metric = getMetric(self.glbl, str(self.geom), str(self.rng))
         return metric
 
 

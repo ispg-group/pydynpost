@@ -1,9 +1,10 @@
 #!/usr/bin/env python
+import numpy as np
 import aimsinp
 import tshinp
 
 
-pckgQuestions = {'aims': aimsinp.pckgQuestion
+pckgQuestions = {'aims': aimsinp.pckgQuestion,
                  'tsh': tshinp.pckgQuestion}
 
 def initParser(parser):
@@ -14,7 +15,7 @@ def initParser(parser):
                          ' recognized.')
     parser.addInput("todo", "What do you want to do?", arr = True)
     parser.addInput("geomDir", "What is the common IC directory name?")
-    if not(hasattr(parser, "geomDir")): 
+    if not hasattr(parser, "geomDir"): 
         parser.addInternal("geomDir", "geom")
     if "population" in parser.todo:
         parser.addInput("nrStates", "How many states?")
@@ -34,7 +35,7 @@ def initParser(parser):
     if parser.multipleRNGs in ["y", "yes"]:
         parser.addInput("nrRNGs", "How many rngs?")
         parser.addInput("RNGdir", "What is the common RNG directory name?")
-        if not(hasattr(parser, "RNGdir")): 
+        if not hasattr(parser, "RNGdir"): 
             parser.addInternal("RNGdir", "rng")
 
     if "molpop" in parser.todo:

@@ -11,11 +11,10 @@ from parse import *
 
 class readPopulation:
 
-    def __init__(self, pkcg, CWD, geom, geomDir, 
-                 rng=None, rngDir=None):
-        self.pckg = pckg
-        self.fileRoot = CWD
-        if not((rng == None) or (rngDir == None)):
+    def __init__(self, glbl, geom, rng = None):
+        self.pckg = glbl.pckg
+        self.fileRoot = glbl.CWD
+        if not (rng == None):
             self.fileRoot += "/" + RNGdir + str(rng)
         self.fileRoot += "/" + geomDir + str(geom) + "/" 
         readerName = 'read' + self.pckg + 'Population'

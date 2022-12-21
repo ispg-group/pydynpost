@@ -3,6 +3,9 @@
 pckgQuestion = "Which AIMS interface did you use?"
 
 def initParser(parser):
+    if parser.pckg == "molpro":
+        parser.addInput("outputDir", "What is the directory name?")
+
     if "internals" in parser.todo:
         parser.addInput("expecType", "Incoherent or coherent expectation value?")
         if parser.expecType == "coherent":
@@ -18,7 +21,7 @@ def initParser(parser):
             parser.addInput("densThresh", "Threshold for MC sampling?")
 
     if "coupling" in parser.todo:
-        if not hasattr(parser, "nrStates")):
+        if not hasattr(parser, "nrStates"):
             parser.addInput("nrStates", "How many states?")
         parser.addInput("couplingType", "What type of effective nac was used?")
         parser.addInput("CSThresh", "What type of effective nac was used?")

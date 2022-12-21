@@ -6,6 +6,7 @@ def readNPfile(fileName, keyIndices):
     outDict = {}
     for key, iKey in keyIndices.items(): 
         outDict[key] = readData[:, iKey] 
+    return outDict
 
 def readTraj(fileName, nrAtoms, readTimestep):
     """

@@ -13,6 +13,7 @@ class Branch(glAttr.globalClass):
         self.geom = geom
         if hasattr(self, 'nrRNGs'):
             self.leaves = leaf.getSimpleIterator(glbl, geom) 
+        self.glbl = glbl
         self.leaves = []
 
     def getMetric(self, metric):
@@ -21,9 +22,8 @@ class Branch(glAttr.globalClass):
             return 0.0
 
         metricModule = importlib.import_module(metric)
-        getMetric = getattr(metricModule, 'get' + metric)
-        metric = getMetric(self.dynMethod, self.pckg, self.CWD,
-                           self.geom, self.geomDir)
+        getMetric = getattr(metricModule, 'get' + metric[0].upper() + metric[1:])
+        metric = getMetric(self.glbl, str(self.geom))
         return metric
 
 

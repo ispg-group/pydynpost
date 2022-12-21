@@ -11,8 +11,11 @@ class Tree(glAttr.globalClass):
 
         super().__init__(glbl)
         self.branches = branch.getSimpleIterator(glbl)
+        self.nrUnqSamples = self.sampleSize - len(self.dupList)
+        if hasattr(self, 'nrRNGs'):
+            self.nrUnqSamples = self.nrUnqSamples * self.nrRNGs 
 
-    def getIBExpectation(self, metric):
+    def getExpectationIFG(self, metric):
 
         partialSum = 0.0
         partialSquareSum = 0.0
@@ -31,14 +34,10 @@ class Tree(glAttr.globalClass):
             partialSum += summand
             partialSquareSum += squareSummand
 
-        if hasattr(self, 'nrRNGs'):
-            totNrSamples = self.nrUnqSamples * self.nrRNGs 
 
-        totNrSamples = self.nrUnqSamples
-
-        mTimeTrace = partialSum / totNrSamples 
-        stdTimeTrace = partialSquareSum / totNrSamples - mTimeTrace**2 
-        stdTimeTrace = np.sqrt(1./(totNrSamples - 1) * stdTimeTrace)
+        mTimeTrace = partialSum / self.nrUnqSamples 
+        stdTimeTrace = partialSquareSum / self.nrUnqSamples - mTimeTrace**2 
+        stdTimeTrace = np.sqrt(1./(self.nrUnqSamples - 1) * stdTimeTrace)
 
         return mTimeTrace, stdTimeTrace
     
@@ -54,4 +53,4 @@ if __name__ == '__main__':
     import commoninp
     parser = commoninp.initParser(parser) 
     pcFMS = Tree(parser)
-    pcFMS.getIBExpectation('population')
+    pcFMS.getExpectationIFG('population')

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
+from scipy import interpolate
 import os
 from filesys import *
 from misc import *
@@ -712,3 +713,30 @@ class processFiles(object):
         except:
             mErr = True
         return mErr, [coupTime, coup] 
+
+
+def resolveInputFilePath(glbl, cwdPath, fileName):
+    if glbl.pckg == "molpro":
+        filePath = cwdPath + "/" + glbl.outputDir + "/" + fileName
+    else:
+        filePath = cwdPath + "/" + fileName
+    return filePath
+
+
+def readPopulation(glbl, geom, rng = None):
+    if not (rng == None):
+        cwdPath = glbl.CWD + "/" + glb.RNGdir + rng + "/" 
+        cwdPath += glbl.geomDir + geom 
+        filePath = resolveInputFilePath(glbl, cwdPath, "N.dat") 
+    else:
+        cwdPath = glbl.CWD + "/" + glbl.geomDir + geom + "/"   
+        filePath = resolveInputFilePath(glbl, cwdPath, "N.dat") 
+
+    rawData = np.genfromtxt(filePath)
+    rawTime = rawData[:, 0] 
+    rawPopulation = rawData[:, 1:rawData.shape[1]-1] 
+
+    return rawTime, rawPopulation
+    
+
+
