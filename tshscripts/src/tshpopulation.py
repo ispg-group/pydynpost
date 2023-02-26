@@ -22,7 +22,6 @@ class statePopulations(object):
             standard error via the quantum amplitudes. """
         currentStates    = self.psFile.readCurrentStates()
         statePopulations, time = self.psFile.readStatePopulations()
-        #print statePopulations
         nStateCl = np.zeros((len(time[0]),self.prsr.nrStates)) 
         nSamplesCl = 0
         for geom in np.arange(self.prsr.sampleSize-len(self.prsr.dupList)):
@@ -41,18 +40,13 @@ class statePopulations(object):
         for i in np.arange(self.prsr.nrStates): 
             nStateCl_mean[:,i] = np.interp(self.prsr.interpTime, 
                                            time[0], nStateCl_m[:,i]) 
-        #print(len(statePopulations))
         for state in np.arange(1,self.prsr.nrStates+1):
             nSamples = 0
             nStateQm = [] 
             for geom in np.arange(self.prsr.sampleSize-len(self.prsr.dupList)):
                 if self.prsr.nrRNGs != 0: 
                     for rng in np.arange(self.prsr.nrRNGs):
-                        #tmpStatePop = statePopulations[geom][rng][state-1]
-                        #interpStatePop = np.interp(self.prsr.interpTime, time[0][0],
-                        #                           tmpStatePop) 
                         nStateQm.append(statePopulations[geom][rng][state-1])
-                        #nStateQm.append(interpStatePop)
                         nSamples += 1
                 else: 
                     nStateQm.append(statePopulations[geom][state-1])
@@ -62,22 +56,17 @@ class statePopulations(object):
             print("The total number of unique ICs is  \t" + str(nSamples))
 
             nStateQm_m = np.zeros(nStateCl.shape[0])
-            #nStateQm_m = np.zeros(self.prsr.interpTime.size)
             for i in np.arange(nSamples):
-                #print nStateQm[i]
                 nStateQm_m += nStateQm[i]  
             nStateQm_m = nStateQm_m / nSamples
-            #nStateQm_mean = nStateQm_m 
             nStateQm_mean = np.interp(self.prsr.interpTime, time[0],
                                       nStateQm_m)
 
             nStateQm_std = np.zeros(nStateCl.shape[0]) 
-            #nStateQm_std = np.zeros(self.prsr.interpTime.size)
             for i in np.arange(nSamples):
                 nStateQm_std += (nStateQm[i] - nStateQm_m)**2
 
             nStateQm_std = np.sqrt(nStateQm_std/(nSamples * (nSamples-1)))
-            #nStateQm_stderr = nStateQm_std 
             nStateQm_stderr = np.interp(self.prsr.interpTime, time[0],
                                         nStateQm_std)
             print("Maximum stderr: \t" + str(np.max(nStateQm_stderr)))
