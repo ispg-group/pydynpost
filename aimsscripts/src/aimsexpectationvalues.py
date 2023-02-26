@@ -270,37 +270,35 @@ class observables(object):
                    rngCoord, TBFcoord, TBFmom, TBFphase, 
                    TBFpop, TBFamp, TBFstt, widths):
 
-        support = 0
-        density = 0
-        for iTBF, pop in enumerate(TBFpop):
-            if pop[t] > 1.e-12:
-                tmpGaussDensity = self.calcGaussianDensity(rngCoord,
-                                                           TBFcoord[iTBF][t],
-                                                           widths)
-                support += pop[t] * tmpGaussDensity
-                density += pop[t] * tmpGaussDensity
-                for jTBF in np.arange(0,iTBF):
-                    if ((TBFstt[iTBF] == TBFstt[jTBF]) and
-                       (TBFpop[jTBF][t] > 1.e-12)):
-                        chiI = self.calcComplexGaussian(rngCoord,
-                                                        TBFcoord[iTBF][t],
-                                                        TBFmom[iTBF][t],
-                                                        TBFphase[iTBF][t],
-                                                        widths)
-                        chiJ = self.calcComplexGaussian(rngCoord,
-                                                        TBFcoord[jTBF][t],
-                                                        TBFmom[jTBF][t],
-                                                        TBFphase[jTBF][t],
-                                                        widths)
-                        addTerm = np.conj(TBFamp[iTBF][t] * chiI) 
-                        addTerm *= TBFamp[jTBF][t] * chiJ
-                        density += 2 * np.real(addTerm)
+        #support = 0
+        #density = 0
+        #for iTBF, pop in enumerate(TBFpop):
+        #    if pop[t] > 1.e-12:
+        #        tmpGaussDensity = self.calcGaussianDensity(rngCoord,
+        #                                                   TBFcoord[iTBF][t],
+        #                                                   widths)
+        #        support += pop[t] * tmpGaussDensity
+        #        density += pop[t] * tmpGaussDensity
+        #        for jTBF in np.arange(0,iTBF):
+        #            if ((TBFstt[iTBF] == TBFstt[jTBF]) and
+        #               (TBFpop[jTBF][t] > 1.e-12)):
+        #                chiI = self.calcComplexGaussian(rngCoord,
+        #                                                TBFcoord[iTBF][t],
+        #                                                TBFmom[iTBF][t],
+        #                                                TBFphase[iTBF][t],
+        #                                                widths)
+        #                chiJ = self.calcComplexGaussian(rngCoord,
+        #                                                TBFcoord[jTBF][t],
+        #                                                TBFmom[jTBF][t],
+        #                                                TBFphase[jTBF][t],
+        #                                                widths)
+        #                addTerm = np.conj(TBFamp[iTBF][t] * chiI) 
+        #                addTerm *= TBFamp[jTBF][t] * chiJ
+        #                density += 2 * np.real(addTerm)
 
-        term = density/support
-        #if self.prsr.interpTime[t] > 600:
-        #print support
-        newDensity = currDensity + density/support
-        newDensity2 = currDensity2 + (density/support)**2
+        #term = density/support
+        newDensity = currDensity + 1
+        newDensity2 = currDensity2 + 1
         return newDensity, newDensity2
 
     def importanceSampling(self, currCWD, t, TBFcoord, TBFmom, 
@@ -330,7 +328,28 @@ class observables(object):
         for iTBF, pop in enumerate(TBFpop):
             #print pop[t]
             tes += pop[t] 
-        #print tes
+
+        mullikenPop = np.zeros(len(TBFpop)) 
+        for iTBF, amp in enumerate(TBFamp):
+            mullikenPop[iTBF] = TBFpop[iTBF][t]
+            for jTBF in range(len(TBFpop)):
+                if iTBF == jTBF:
+                    continue
+                if(TBFstt[iTBF] == TBFstt[jTBF]):
+                    mullikenPop[iTBF] += (np.real(np.conj(TBFamp[iTBF][t]) * 
+                                          np.prod(self.calcOverlap(
+                                                          np.array([TBFcoord[iTBF][t][0][0],
+                                                                    TBFcoord[iTBF][t][1][0]]),
+                                                          np.array([TBFcoord[jTBF][t][0][0],
+                                                                    TBFcoord[jTBF][t][1][0]]),
+                                                          np.array([TBFmom[iTBF][t][0][0],
+                                                                    TBFmom[iTBF][t][1][0]]),
+                                                          np.array([TBFmom[jTBF][t][0][0],
+                                                                    TBFmom[jTBF][t][1][0]]),
+                                                          0,0,
+                                                          np.array(widths)))
+                                             * np.exp(1.j*(TBFphase[jTBF][t] - TBFphase[iTBF][t])) 
+                                             * TBFamp[jTBF][t]))
 
         while True:
             meanOld = meanNew.copy()
@@ -338,12 +357,13 @@ class observables(object):
             bOld = bNew
             eta = rng.uniform(0,tes)
             cumProb = 0 
-           
 
-            for iTBF, pop in enumerate(TBFpop):
-                if pop[t] < 1.e-12:
-                    continue
-                cumProb += pop[t] 
+#            for iTBF, pop in enumerate(TBFpop):
+            for iTBF, pop in enumerate(mullikenPop):
+                #if pop[t] < 1.e-12:
+                #if pop < 1.e-12
+                #    continue
+                cumProb += pop 
                 if eta <= cumProb:
                     rngCoord = self.sampleGeometry(TBFcoord[iTBF][t],widths,
                                                    atmNames,rng) 
@@ -388,7 +408,7 @@ class observables(object):
             summ += meanNew[i] 
 
         #assert abs(summ - 1.0) <= 1.e-12
-        print summ
+        print(summ)
         #print nrSamples
         finalDensity = []
         for iBox, box in enumerate(self.prsr.boxes):
@@ -396,11 +416,11 @@ class observables(object):
                 finalDensity.append(meanNew[iBox]) 
 
         finalDensity = np.array(finalDensity)
-        #xaxis = self.prsr.boxes.flatten()
-        #saveFile = 'redDens_' + str(t) + '.dat'
-        #writeNPFile(2, saveFile, [xaxis, finalDensity], 
-        #            fmtStyle = "%30.18e %30.18e") 
-        print nrSamples + nrFldTriesBlw + nrFldTriesAbv
+        xaxis = self.prsr.boxes.flatten()
+        saveFile = 'redDens_' + str(t) + '.dat'
+        writeNPFile(2, saveFile, [xaxis, finalDensity], 
+                    fmtStyle = "%30.18e %30.18e") 
+        print(nrSamples + nrFldTriesBlw + nrFldTriesAbv)
         return finalDensity
 
     def calcOverlap(self, xi, xj, pi, pj, gammaI, gammaJ, 
@@ -448,9 +468,6 @@ class observables(object):
                         continue
                     if not(TBFstt[iTBF] == TBFstt[jTBF]):
                         continue
-                    #if self.prsr.interpTime[t] == 200: 
-                    #    print iTBF, TBFpop[iTBF][t], jTBF, TBFpop[jTBF][t]
-                    #print iTBF + 1, jTBF + 1, TBFpop[iTBF][t], TBFpop[jTBF][t]
                     widthX = widths[0]
                     widthY = widths[1]
                     overlapX = self.calcOverlap(
@@ -471,6 +488,7 @@ class observables(object):
                               TBFphase[jTBF][t],
                               widthY
                               ) 
+                    #print(overlapX, overlapY)
                     if self.prsr.internalType == "X":
                         overlap = overlapY
                         chiI = self.calcComplexGaussian(
@@ -520,9 +538,9 @@ class observables(object):
                     exactDens[iX] += addTerm
                     #print addTerm
 
-            #print fullDens, nonOv, nonOv - 1
+        print(fullDens)
         intgrl = integrate.simps(exactDens, xaxis)
-        print 'int', intgrl
+        print('int', intgrl)
         saveFile = 'exactRedDens_' + str(t) + '.dat'
         #exactDens = exactDens * maxDens / np.amax(exactDens)
         writeNPFile(2, saveFile, [xaxis, exactDens], 
@@ -589,12 +607,12 @@ class observables(object):
         atmNames = self.psFile.readAtomNames(tmpCWD) 
         redDens = []
         exactRedDens = []
-        yaxis = self.prsr.boxes.flatten()
+        yaxis = np.unique(self.prsr.boxes.flatten())
         densMovie = np.zeros((self.prsr.interpTime.size,yaxis.size,1))
         exactDensMovie = np.zeros((self.prsr.interpTime.size,yaxis.size,1))
         #print TBFmom
         for t in np.arange(self.prsr.interpTime.size):
-            print self.prsr.interpTime[t]
+            print(self.prsr.interpTime[t])
             density = self.importanceSampling(tmpCWD, t, TBFcoord, TBFmom,
                                               TBFphase, TBFpop, TBFamp, 
                                               TBFstt, widths, atmNames)
@@ -624,6 +642,7 @@ class observables(object):
         fileName += '.dat'
         writeGridFile(fileName, grid, densMovie, 1, header)
 
+        print(yaxis.size, exactDensMovie.shape)
         if ((self.prsr.internalType == "X") or
             (self.prsr.internalType == "Y")):
             header = ['Time (atu)', 'internal', 'red. density']
@@ -638,7 +657,7 @@ class observables(object):
         #     densMovie[2, iT*xaxis.size:(iT+1)*xaxis.size].size = density[iT]
 
     def getCoherentExpectationValue(self, saveStringParams):
-        yaxis = self.prsr.boxes.flatten()
+        yaxis = np.unique(self.prsr.boxes.flatten())
         fullDensity = np.zeros((self.prsr.interpTime.size,yaxis.size,1))
         nrSamples = 0
         TBFpop = self.psFile.getTBFpopulations()
@@ -652,7 +671,7 @@ class observables(object):
                     geomExpecObservable = np.zeros(self.prsr.interpTime.size)
                     tmpExpects = []  
                     for rng in np.arange(self.prsr.nrRNGs):
-                        print geom, rng
+                        print(geom, rng)
                         tmpCWD  = self.CWD + "/" + self.prsr.RNGdir 
                         tmpCWD += str(rng + 1) +  "/" + self.prsr.geomDir
                         tmpCWD += str(geom)
@@ -664,7 +683,7 @@ class observables(object):
                         nrSamples += 1
                     ind += 1
                 else:
-                    print geom
+                    print(geom)
                     tmpCWD  = self.CWD + "/" + self.prsr.geomDir + str(geom)
                     tmpDensity = self.calcCoherentExpectationValue(
                                     tmpCWD, saveStringParams, 
