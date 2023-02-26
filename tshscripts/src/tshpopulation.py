@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
 import os
+import math
 from filesys import *
 from misc import *
 from parse import *
@@ -21,18 +22,17 @@ class statePopulations(object):
             standard error via the quantum amplitudes. """
         currentStates    = self.psFile.readCurrentStates()
         statePopulations, time = self.psFile.readStatePopulations()
-        #print statePopulations
         nStateCl = np.zeros((len(time[0]),self.prsr.nrStates)) 
         nSamplesCl = 0
         for geom in np.arange(self.prsr.sampleSize-len(self.prsr.dupList)):
             if self.prsr.nrRNGs != 0: 
                 for rng in np.arange(self.prsr.nrRNGs):
                     for currTime, currState in enumerate(currentStates[geom][rng]):
-                        nStateCl[currTime, currState - 1] += 1
+                        nStateCl[currTime, int(currState) - 1] += 1
                     nSamplesCl += 1
             else: 
                 for currTime, currState in enumerate(currentStates[geom]):
-                    nStateCl[currTime, currState - 1] += 1
+                    nStateCl[currTime, int(currState) - 1] += 1
                 nSamplesCl += 1
 
         nStateCl_m = nStateCl / nSamplesCl
@@ -40,43 +40,44 @@ class statePopulations(object):
         for i in np.arange(self.prsr.nrStates): 
             nStateCl_mean[:,i] = np.interp(self.prsr.interpTime, 
                                            time[0], nStateCl_m[:,i]) 
-        print len(statePopulations) 
         for state in np.arange(1,self.prsr.nrStates+1):
-            nrSamples = 0
-            #nStateQm = [] 
-            nStateQm_mean = 0
-            nStateQm_std = 0
+            nSamples = 0
+            nStateQm = [] 
             for geom in np.arange(self.prsr.sampleSize-len(self.prsr.dupList)):
                 if self.prsr.nrRNGs != 0: 
                     for rng in np.arange(self.prsr.nrRNGs):
-                        nStateQm_mean += statePopulations[geom][rng][state-1]
-                        nStateQm_std += statePopulations[geom][rng][state-1]**2
+                        nStateQm.append(statePopulations[geom][rng][state-1])
+                        nSamples += 1
                 else: 
-                    nStateQm_mean += statePopulations[geom][state-1]
-                    nStateQm_std += statePopulations[geom][state-1]**2 
-                    nrSamples += 1
+                    nStateQm.append(statePopulations[geom][state-1])
+                    nSamples += 1
 
             print("")
-            print("The total number of unique ICs is  \t" + str(nrSamples))
+            print("The total number of unique ICs is  \t" + str(nSamples))
 
-            nStateQm_mean /= nrSamples
-            nStateQm_std = nStateQm_std / nrSamples - nstateQm_mean**2
-            nStateQm_std = np.sqrt(1/(nrSamples-1)*nStateQm_std)
-            
+            nStateQm_m = np.zeros(nStateCl.shape[0])
+            for i in np.arange(nSamples):
+                nStateQm_m += nStateQm[i]  
+            nStateQm_m = nStateQm_m / nSamples
             nStateQm_mean = np.interp(self.prsr.interpTime, time[0],
-                                      nStateQm_mean)
-            nStateQm_std = np.interp(self.prsr.interpTime, time[0],
-                                     nStateQm_std)
+                                      nStateQm_m)
 
-            print("Maximum stderr: \t" + str(np.max(nStateQm_std)))
+            nStateQm_std = np.zeros(nStateCl.shape[0]) 
+            for i in np.arange(nSamples):
+                nStateQm_std += (nStateQm[i] - nStateQm_m)**2
+
+            nStateQm_std = np.sqrt(nStateQm_std/(nSamples * (nSamples-1)))
+            nStateQm_stderr = np.interp(self.prsr.interpTime, time[0],
+                                        nStateQm_std)
+            print("Maximum stderr: \t" + str(np.max(nStateQm_stderr)))
 
             stateStr = str(state)
             nStateQm_file = "N_" + stateStr + "_Qm" + ".dat"
             np.savetxt(nStateQm_file, np.array([self.prsr.interpTime, nStateQm_mean,
-                                                nStateQm_std]).T,
+                                                nStateQm_stderr]).T,
                        fmt="%8.2f %30.18e %30.18e")
             nStateCl_file = "N_" + stateStr + "_Cl" + ".dat"
             assert(nSamples == nSamplesCl)
             np.savetxt(nStateCl_file, np.array([self.prsr.interpTime, nStateCl_mean[:,state-1],
-                                                nStateQm_std]).T,
+                                                nStateQm_stderr]).T,
                        fmt="%8.2f %30.18e %30.18e")

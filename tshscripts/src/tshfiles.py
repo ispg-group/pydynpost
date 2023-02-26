@@ -67,7 +67,6 @@ class processFiles(object):
                 self.addPositions(currInitFileName, currTrajFileName, nrAtoms, geomPositions)
             positions.append(geomPositions)
                 
-        #print len(positions[0])
         return positions
 
 class processFilesABIN(processFiles):
@@ -82,7 +81,6 @@ class processFilesABIN(processFiles):
     def readCurrentStates(self): 
         fileNameRt = "pop.dat"
         currentStates = []
-        #print  self.prsr.dupList
         for geom in np.arange(1, self.prsr.sampleSize + 1):
             if geom in self.prsr.dupList:
                 continue
@@ -157,17 +155,26 @@ class processFilesABIN(processFiles):
                 geomStatePopulation.append(rngStatePopulation)
                 currTime  = currTime[currTime <= self.prsr.maxTime]
                 geomTime.append(currTime)
+                     
             else:
                 currFileName  = self.CWD + "/" + self.prsr.geomDir 
-                currFileName += str(geom) + "/" + fileNameRt 
+                currFileName += str(geom) + "/"  
+                initStPop = self.readInitStPop(currFileName) 
+                currFileName += fileNameRt
                 currDat   = np.genfromtxt(currFileName)
-                currTime  = currDat[:,0]
+                currTime = np.zeros(currDat[:,0].size + 1)  
+                currTime[0] = 0.0
+                currTime[1:] = currDat[:,0]
                 indStatePop = []
                 for state in np.arange(2,self.prsr.nrStates+2):
-                    currStatePop = currDat[:, state] 
-                    currStatePop = currStatePop[currTime <= self.prsr.maxTime]
+                    tmpCurrStatePop = currDat[:, state] 
+                    currStatePop = np.zeros(tmpCurrStatePop.size + 1) 
+                    currStatePop[0] = initStPop[state-2]   
+                    currStatePop[1:] = tmpCurrStatePop
+                    currStatePop = currStatePop[currTime <= self.prsr.maxTime] 
                     indStatePop.append(currStatePop)
-                geomStatePopulation.append(currStatePop)
+                geomStatePopulation.append(indStatePop)
+                currTime = currTime[currTime <= self.prsr.maxTime]
                 geomTime.append(currTime)
                 
                 
