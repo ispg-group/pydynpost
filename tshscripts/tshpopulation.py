@@ -5,7 +5,6 @@ import math
 from commonmethods.filesys import *
 from commonmethods.misc import *
 from commonmethods.parse import *
-from aimsinp import *
 
 class statePopulations(object):
     """ Class handling the calculation of adiabatic 

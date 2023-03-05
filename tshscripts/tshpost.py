@@ -61,7 +61,7 @@ class TSHpost(object):
 
 def main():
     cwd = os.getcwd()
-    parser = parseInput("aimspost.inp", cwd)
+    parser = parseInput("tsh.inp", cwd)
     parser = initParser(parser) 
     postprocessing = AIMSpost(parser, cwd)
     postprocessing.performTasks()
