@@ -3,8 +3,8 @@ from __future__ import print_function
 import numpy as np
 import os
 import sys
-from stringmanip import * 
-from misc import *
+from .stringmanip import * 
+from .misc import *
 
 importedPromptTK = True
 try:

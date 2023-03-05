@@ -3,12 +3,12 @@ import numpy as np
 import os
 import math
 import importlib
-from filesys import *
-from misc import *
-from parse import *
-from tshinp import *
-import tshfiles 
-import tshmodandmet
+from commonmethods.filesys import *
+from commonmethods.misc import *
+from commonmethods.parse import *
+from .tshinp import *
+from . import tshfiles 
+from . import tshmodandmet
 
 class TSHpost(object):
     """

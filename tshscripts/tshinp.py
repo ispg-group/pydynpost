@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 import numpy as np
 import os
-from filesys import *
-from misc import *
-from parse import *
+from commonmethods.filesys import *
+from commonmethods.misc import *
+from commonmethods.parse import *
 
 def initParser(parser):
     parser.addInput("code", "Which tsh code did you use")

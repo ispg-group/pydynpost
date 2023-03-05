@@ -2,9 +2,9 @@
 import numpy as np
 import os
 import abc
-from filesys import *
-from misc import *
-from parse import *
+from .filesys import *
+from .misc import *
+from .parse import *
 
 def addTraj(fileName, nrAtoms, readTimestep):
     """

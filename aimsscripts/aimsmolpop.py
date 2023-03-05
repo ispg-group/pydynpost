@@ -4,13 +4,13 @@ import abc
 from abc import ABCMeta
 import os
 import copy
-from filesys import *
-from misc import *
-from parse import *
-from aimsinp import *
-from aimssave import *
-from internals import *
-from aimsexpectationvalues import *
+from commonmethods.filesys import *
+from commonmethods.misc import *
+from commonmethods.parse import *
+from .aimsinp import *
+from .aimssave import *
+from commonmethods.internals import *
+from .aimsexpectationvalues import *
 
 class molpop(object):
     """
