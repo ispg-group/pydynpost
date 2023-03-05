@@ -1,10 +1,5 @@
 #!/usr/bin/env python
 import numpy as np
-import os
-from commonmethods.filesys import *
-from commonmethods.misc import *
-from commonmethods.parse import *
-from .aimsinp import *
 
 def writeNPFile(fileName, nrColumns, content, fmtStyle = None):
     saveFormat      = np.zeros((content[0].size, nrColumns))

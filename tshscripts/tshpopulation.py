@@ -6,6 +6,8 @@ from commonmethods.filesys import *
 from commonmethods.misc import *
 from commonmethods.parse import *
 
+def getPopulation(drivingState, nrStates):
+
 class statePopulations(object):
     """ Class handling the calculation of adiabatic 
         electronic state populations. """
