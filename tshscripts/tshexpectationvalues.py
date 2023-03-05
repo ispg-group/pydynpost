@@ -3,10 +3,10 @@ import numpy as np
 import os
 import math
 from filesys import *
-from misc import *
-from parse import *
-from internals import *
-from writefiles import *
+from commonmethods.misc import *
+from commonmethods.parse import *
+from commonmethods.internals import *
+from aimsscripts.aimssave import *
 
 class internals(object): 
     def __init__(self, parser, cwd, psFile):
