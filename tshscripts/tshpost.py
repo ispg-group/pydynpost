@@ -39,7 +39,8 @@ class TSHpost(object):
             # Do not load the same module twice 
             if moduleName in importedModules: 
                 continue
-            newModule = importlib.import_module(self.moduleNames[task])
+            newModule = importlib.import_module("." + self.moduleNames[task], 
+                                                package="tshscripts")
             newClass  = getattr(newModule, self.methodNames[task])
             if task in ["population", "complexity"]: 
                 # some tasks need to know the directory structure

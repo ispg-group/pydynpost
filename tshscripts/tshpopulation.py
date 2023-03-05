@@ -2,9 +2,9 @@
 import numpy as np
 import os
 import math
-from filesys import *
-from misc import *
-from parse import *
+from commonmethods.filesys import *
+from commonmethods.misc import *
+from commonmethods.parse import *
 from aimsinp import *
 
 class statePopulations(object):
