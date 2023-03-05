@@ -2,12 +2,12 @@
 import numpy as np
 import os
 import importlib
-from filesys import *
-from misc import *
-from parse import *
-from aimsinp import *
-from aimsfiles import *
-import aimsmodandmet
+from commonmethods.filesys import *
+from commonmethods.misc import *
+from commonmethods.parse import *
+from .aimsinp import *
+from .aimsfiles import *
+from . import aimsmodandmet
 
 class AIMSpost(object):
     """
@@ -45,7 +45,8 @@ class AIMSpost(object):
             # Do not load the same module twice 
             if moduleName in importedModules: 
                 continue
-            newModule = importlib.import_module(self.moduleNames[task])
+            newModule = importlib.import_module("." + self.moduleNames[task], 
+                                                package="aimsscripts")
             newClass  = getattr(newModule, self.methodNames[task])
             if task in ["population", "complexity"]: 
                 # some tasks need to know the directory structure

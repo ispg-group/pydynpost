@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 import numpy as np
 import os
-from filesys import *
-from misc import *
-from parse import *
-from aimsinp import *
+from commonmethods.filesys import *
+from commonmethods.misc import *
+from commonmethods.parse import *
+from .aimsinp import *
 
 class statePopulations(object):
     """ Class handling the calculation of adiabatic 

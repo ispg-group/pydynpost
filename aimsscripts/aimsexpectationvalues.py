@@ -2,15 +2,15 @@
 import numpy as np
 import abc
 from abc import ABCMeta
+from scipy import integrate
 import os
 import copy
-from filesys import *
-from misc import *
-from parse import *
-from aimsinp import *
-from aimssave import *
-from internals import *
-from scipy import integrate
+from commonmethods.filesys import *
+from commonmethods.misc import *
+from commonmethods.parse import *
+from .aimsinp import *
+from .aimssave import *
+from commonmethods.internals import *
 b2A = 0.529177249
 A2b = 1./b2A
 

@@ -3,12 +3,12 @@ import numpy as np
 import os
 import math
 import importlib
-from filesys import *
-from misc import *
-from parse import *
-from tshinp import *
-import tshfiles 
-import tshmodandmet
+from commonmethods.filesys import *
+from commonmethods.misc import *
+from commonmethods.parse import *
+from .tshinp import *
+from . import tshfiles 
+from . import tshmodandmet
 
 class TSHpost(object):
     """
@@ -39,7 +39,8 @@ class TSHpost(object):
             # Do not load the same module twice 
             if moduleName in importedModules: 
                 continue
-            newModule = importlib.import_module(self.moduleNames[task])
+            newModule = importlib.import_module("." + self.moduleNames[task], 
+                                                package="tshscripts")
             newClass  = getattr(newModule, self.methodNames[task])
             if task in ["population", "complexity"]: 
                 # some tasks need to know the directory structure
@@ -60,7 +61,7 @@ class TSHpost(object):
 
 def main():
     cwd = os.getcwd()
-    parser = parseInput("aimspost.inp", cwd)
+    parser = parseInput("tsh.inp", cwd)
     parser = initParser(parser) 
     postprocessing = AIMSpost(parser, cwd)
     postprocessing.performTasks()

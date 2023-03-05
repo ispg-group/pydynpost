@@ -2,11 +2,11 @@
 import numpy as np
 import os
 import abc
-import files 
+import commonmethods.files 
 from abc import ABCMeta
-from filesys import *
-from misc import *
-from parse import *
+from commonmethods.filesys import *
+from commonmethods.misc import *
+from commonmethods.parse import *
 
 class processFiles(object):
     __metaclass__ = ABCMeta

@@ -2,17 +2,18 @@
 import numpy as np
 import os
 import importlib
-from filesys import *
-from misc import *
-from parse import *
+from commonmethods.filesys import *
+from commonmethods.misc import *
+from commonmethods.parse import *
 
 def main(): 
     cwd = os.getcwd()
     parser = parseInput("dynpost.inp", cwd)
     parser.addInput("dynMethod", "Which dynamics method was used?")
-    moduleName = parser.dynMethod + "post"
+    packageName = parser.dynMethod + "scripts."
+    moduleName = packageName + parser.dynMethod + "post"
     mainName   = parser.dynMethod.upper() + "post" 
-    inpName = parser.dynMethod + "inp"
+    inpName = packageName + parser.dynMethod + "inp"
     dynModule = importlib.import_module(moduleName)
     inpModule = importlib.import_module(inpName)
     parser = inpModule.initParser(parser) 
