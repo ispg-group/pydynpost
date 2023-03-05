@@ -249,4 +249,4 @@ class redundantInternals(molGraph):
 
     def getBondPartner(self): 
         for i in np.arange(1, self.BLConnectivity.size):
-            print self.atomNames[self.BLConnectivity[i]], self.atomNames[i]
+            print(self.atomNames[self.BLConnectivity[i]], self.atomNames[i])
