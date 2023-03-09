@@ -270,33 +270,32 @@ class observables(object):
                    rngCoord, TBFcoord, TBFmom, TBFphase, 
                    TBFpop, TBFamp, TBFstt, widths):
 
-        #support = 0
-        #density = 0
-        #for iTBF, pop in enumerate(TBFpop):
-        #    if pop[t] > 1.e-12:
-        #        tmpGaussDensity = self.calcGaussianDensity(rngCoord,
-        #                                                   TBFcoord[iTBF][t],
-        #                                                   widths)
-        #        support += pop[t] * tmpGaussDensity
-        #        density += pop[t] * tmpGaussDensity
-        #        for jTBF in np.arange(0,iTBF):
-        #            if ((TBFstt[iTBF] == TBFstt[jTBF]) and
-        #               (TBFpop[jTBF][t] > 1.e-12)):
-        #                chiI = self.calcComplexGaussian(rngCoord,
-        #                                                TBFcoord[iTBF][t],
-        #                                                TBFmom[iTBF][t],
-        #                                                TBFphase[iTBF][t],
-        #                                                widths)
-        #                chiJ = self.calcComplexGaussian(rngCoord,
-        #                                                TBFcoord[jTBF][t],
-        #                                                TBFmom[jTBF][t],
-        #                                                TBFphase[jTBF][t],
-        #                                                widths)
-        #                addTerm = np.conj(TBFamp[iTBF][t] * chiI) 
-        #                addTerm *= TBFamp[jTBF][t] * chiJ
-        #                density += 2 * np.real(addTerm)
+        support = 0
+        density = 0
+        for iTBF, pop in enumerate(TBFpop):
+            if pop > 1.e-12:
+                tmpGaussDensity = self.calcGaussianDensity(rngCoord,
+                                                           TBFcoord[iTBF][t],
+                                                           widths)
+                support += pop * tmpGaussDensity
+                density += np.abs(TBFamp[iTBF][t])**2 * tmpGaussDensity
+                for jTBF in np.arange(0,iTBF):
+                    if ((TBFstt[iTBF] == TBFstt[jTBF])):
+                        chiI = self.calcComplexGaussian(rngCoord,
+                                                        TBFcoord[iTBF][t],
+                                                        TBFmom[iTBF][t],
+                                                        TBFphase[iTBF][t],
+                                                        widths)
+                        chiJ = self.calcComplexGaussian(rngCoord,
+                                                        TBFcoord[jTBF][t],
+                                                        TBFmom[jTBF][t],
+                                                        TBFphase[jTBF][t],
+                                                        widths)
+                        addTerm = np.conj(TBFamp[iTBF][t] * chiI) 
+                        addTerm *= TBFamp[jTBF][t] * chiJ
+                        density += 2 * np.real(addTerm)
 
-        #term = density/support
+        term = density/support
         newDensity = currDensity + 1
         newDensity2 = currDensity2 + 1
         return newDensity, newDensity2
@@ -382,7 +381,7 @@ class observables(object):
                                               density2[b],
                                               rngCoord, TBFcoord,
                                               TBFmom, TBFphase,
-                                              TBFpop, TBFamp,
+                                              mullikenPop, TBFamp,
                                               TBFstt, widths
                                               )
                     nrSamples += 1
