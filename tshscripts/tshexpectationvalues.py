@@ -6,7 +6,7 @@ from filesys import *
 from commonmethods.misc import *
 from commonmethods.parse import *
 from commonmethods.internals import *
-from aimsscripts.aimssave import *
+from commonmethods.writefiles import *
 
 class internals(object): 
     def __init__(self, parser, cwd, psFile):

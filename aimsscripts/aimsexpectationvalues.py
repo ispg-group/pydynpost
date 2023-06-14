@@ -8,8 +8,8 @@ import copy
 from commonmethods.filesys import *
 from commonmethods.misc import *
 from commonmethods.parse import *
+from commonmethods.writefiles import *
 from .aimsinp import *
-from .aimssave import *
 from commonmethods.internals import *
 b2A = 0.529177249
 A2b = 1./b2A
