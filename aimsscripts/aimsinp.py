@@ -39,7 +39,8 @@ def initParser(parser):
         parser.addInput("internalType", "Which kind of internal is it?")
         parser.addInput("internalName", "Which atoms contribute?")
         parser.addInput("expecType", "Incoherent or coherent expectation value?")
-        if parser.expecType == "coherent":
+        if (parser.expecType == "coherent" and 
+            not(parser.internalType == "XY")):
             parser.addInput("expecMin", "Minimum expectation value?")
             parser.addInput("expecMax", "Maximum expectation value?")
             parser.addInput("nrBoxes", "Number of boxes?")
@@ -50,6 +51,25 @@ def initParser(parser):
                 boxes.append((interval[i], interval[i+1])) 
             parser.boxes = np.array(boxes)
             parser.addInput("densThresh", "Threshold for MC sampling?")
+        else:
+            parser.addInput("xMin", "Minimum expectation value?")
+            parser.addInput("xMax", "Maximum expectation value?")
+            parser.addInput("yMin", "Minimum expectation value?")
+            parser.addInput("yMax", "Maximum expectation value?")
+            parser.addInput("nrBoxesX", "Number of boxes?")
+            parser.addInput("nrBoxesY", "Number of boxes?")
+            intervalX = np.linspace(parser.xMin,parser.xMax,
+                                    parser.nrBoxesX+1)
+            intervalY = np.linspace(parser.yMin,parser.yMax,
+                                    parser.nrBoxesY+1)
+            boxesX = []
+            boxesY = []
+            for i in range(parser.nrBoxesX):
+                boxesX.append((intervalX[i], intervalX[i+1])) 
+            for i in range(parser.nrBoxesY):
+                boxesY.append((intervalY[i], intervalY[i+1])) 
+            parser.boxesX = np.array(boxesX)
+            parser.boxesY = np.array(boxesY)
 
         assert (hasattr(parser, "internalType") and hasattr(parser, "internalName")) 
     elif "molpop" in parser.todo:
