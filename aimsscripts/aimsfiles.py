@@ -326,8 +326,10 @@ class processFiles(object):
                     addAtmNames=True):
         momFile = "TrajDump." + str(ID) 
         merr = True
+        momFile = self.inputFileName(tmpCWD, momFile) 
         if not(momFile in os.listdir(tmpCWD)):
             momFile = "momenta." + str(ID) + ".xyz" 
+            momFile = self.inputFileName(tmpCWD, momFile) 
             try:
                 f = open(momFile, "r")
                 merr = False 
@@ -636,6 +638,7 @@ class processFiles(object):
                 return mErr, []
         else:
             phaseFile = 'Phase.' + str(ID)
+            phaseFile = self.inputFileName(tmpCWD, phaseFile) 
             try:
                 phaseData = np.genfromtxt(phaseFile)
                 mErr = False
@@ -643,12 +646,12 @@ class processFiles(object):
                 pass
             
             if not(mErr):
-                if not(len(phaseData.shape) == 1):
+                if (not(len(phaseData.shape) == 1)):
                     time = phaseData[:,0]
                     phases = phaseData[:,1]
                 else:
-                    time = np.array(phaseData[0])
-                    phases = np.array(phaseData[1])
+                    time = np.array([phaseData[0]])
+                    phases = np.array([phaseData[1]])
 
             if not(mErr):
                 if (interp == True):

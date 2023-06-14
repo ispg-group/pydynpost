@@ -5,6 +5,7 @@ from abc import ABCMeta
 from scipy import integrate
 import os
 import copy
+import time as timer
 from commonmethods.filesys import *
 from commonmethods.misc import *
 from commonmethods.parse import *
@@ -240,7 +241,8 @@ class observables(object):
 
             for j, tmpCoord in enumerate(coord):
                 if ((self.prsr.internalType == "X") or
-                    (self.prsr.internalType == "Y")):
+                    (self.prsr.internalType == "Y") or
+                    (self.prsr.internalType == "XY")):
                     if j > 0:
                         break
                 exponent -= 2 * alpha * (tmpCoord - RNGcoord[i][j+1])**2
@@ -257,7 +259,8 @@ class observables(object):
 
             for j, tmpCoord in enumerate(coord):
                 if ((self.prsr.internalType == "X") or
-                    (self.prsr.internalType == "Y")):
+                    (self.prsr.internalType == "Y") or  
+                    (self.prsr.internalType == "XY")):
                     if j > 0:
                         break
                 exponent -= alpha * (RNGcoord[i][j+1] - tmpCoord)**2
@@ -434,9 +437,9 @@ class observables(object):
         overlap = np.exp(exponent)
         return overlap
              
-    def calcExactDensity(self, currCWD, t, TBFcoord, TBFmom, 
-                         TBFphase, TBFpop, TBFamp, TBFstt,
-                         widths, atmNames, maxDens):
+    def calcExactRedDensity(self, currCWD, t, TBFcoord, TBFmom, 
+                            TBFphase, TBFpop, TBFamp, TBFstt,
+                            widths, atmNames, maxDens):
 
         xaxis = np.unique(self.prsr.boxes.flatten())
         exactDens = np.zeros(xaxis.size)
@@ -546,13 +549,86 @@ class observables(object):
                     fmtStyle = "%30.18e %30.18e") 
             
         return exactDens
+
+    def calcExactDensity(self, currCWD, t, TBFcoord, TBFmom, 
+                         TBFphase, TBFpop, TBFamp, TBFstt,
+                         widths, atmNames):
+
+        begin = timer.time()
+        xaxis = np.unique(self.prsr.boxesX.flatten())
+        dx = np.abs(xaxis[1] - xaxis[0])
+        yaxis = np.unique(self.prsr.boxesY.flatten())
+        dy = np.abs(yaxis[1] - yaxis[0])
+        exactDens = np.zeros((xaxis.size, yaxis.size))
+        norm = 0
+        for iX, x in enumerate(xaxis):
+            for iY, y in enumerate(yaxis):
+
+                for iTBF in np.arange(len(TBFamp)):
+                    if TBFpop[iTBF][t] < 1.e-12:
+                        continue
+                    tmpCoord = [TBFcoord[iTBF][t][0],
+                                TBFcoord[iTBF][t][1]]
+                    currCoord = [['QQ1', x, 0.0, 0.0], 
+                                 ['PP2', y, 0.0, 0.0]]
+                    gaussianDensity = self.calcGaussianDensity(
+                                                     currCoord,
+                                                     tmpCoord,
+                                                     widths
+                                                     )
+                    exactDens[iX, iY] += TBFpop[iTBF][t] * gaussianDensity 
+                    norm += TBFpop[iTBF][t] * gaussianDensity * dx * dy
+                    for jTBF in np.arange(0,iTBF):
+                        if TBFpop[iTBF][t] < 1.e-12:
+                            continue
+                        if TBFpop[jTBF][t] < 1.e-12:
+                            continue
+                        if not(TBFstt[iTBF] == TBFstt[jTBF]):
+                            continue
+                        chiI = self.calcComplexGaussian(
+                               currCoord,
+                               [TBFcoord[iTBF][t][0],
+                               TBFcoord[iTBF][t][1]],
+                               [TBFmom[iTBF][t][0],
+                               TBFmom[iTBF][t][1]],
+                               TBFphase[iTBF][t],
+                               widths
+                               )
+                        chiJ = self.calcComplexGaussian(
+                               currCoord,
+                               [TBFcoord[jTBF][t][0],
+                               TBFcoord[jTBF][t][1]],
+                               [TBFmom[jTBF][t][0],
+                               TBFmom[jTBF][t][1]],
+                               TBFphase[jTBF][t],
+                               widths
+                               )
+                            
+                        addTerm = 0
+                        addTerm = np.conj(TBFamp[iTBF][t]) * TBFamp[jTBF][t] 
+                        addTerm *= np.conj(chiI) * chiJ
+                        addTerm = 2 * np.real(addTerm)
+                        exactDens[iX, iY] += addTerm
+                        norm += addTerm * dx * dy
+
+        
+        end = timer.time()
+        print('elapsed time', end-begin)
+        print('int', norm)
+        #saveFile = 'exactRedDens_' + str(t) + '.dat'
+        ##exactDens = exactDens * maxDens / np.amax(exactDens)
+        #writeNPFile(2, saveFile, [xaxis, exactDens], 
+        #            fmtStyle = "%30.18e %30.18e") 
+            
+        return exactDens
                          
                         
     def calcCoherentExpectationValue(self, tmpCWD, saveStringParams, TBFpop, TBFamp):
         numParticles = self.psFile.findNumAtoms(tmpCWD)
         spawnTimes, childIDs, parentIDs, numSpawns = self.psFile.findNrSpawns(tmpCWD)
         if ((self.prsr.internalType == "X") or
-            (self.prsr.internalType == "Y")):
+            (self.prsr.internalType == "Y") or
+            (self.prsr.internalType == "XY")):
             posErr, FGcoord = self.psFile.readPositions(1,tmpCWD,numParticles,
                                                         addAtmNames=False)
         else:
@@ -562,6 +638,7 @@ class observables(object):
         momErr, FGmom = self.psFile.readMomenta(1,tmpCWD,numParticles,
                                                 addAtmNames=False)
         phaseErr, FGphase = self.psFile.getTBFphase(1,tmpCWD)
+        #print(posErr, momErr, phaseErr)
         TBFcoord = []
         TBFmom = []
         TBFphase = [] 
@@ -573,7 +650,8 @@ class observables(object):
             TBFphase.append(FGphase)
         for childID in childIDs:
             if ((self.prsr.internalType == "X") or
-                (self.prsr.internalType == "Y")):
+                (self.prsr.internalType == "Y") or
+                (self.prsr.internalType == "XY")):
                 posErr, CHcoord = self.psFile.readPositions(childID, 
                                                             tmpCWD,
                                                             numParticles,
@@ -604,49 +682,74 @@ class observables(object):
         TBFstt = self.psFile.getTBFstate(tmpCWD)
         widths = self.psFile.readWidths(tmpCWD) 
         atmNames = self.psFile.readAtomNames(tmpCWD) 
-        redDens = []
-        exactRedDens = []
-        yaxis = np.unique(self.prsr.boxes.flatten())
-        densMovie = np.zeros((self.prsr.interpTime.size,yaxis.size,1))
-        exactDensMovie = np.zeros((self.prsr.interpTime.size,yaxis.size,1))
+        if not(self.prsr.internalType == "XY"):
+            redDens = []
+            exactRedDens = []
+            yaxis = np.unique(self.prsr.boxes.flatten())
+            densMovie = np.zeros((self.prsr.interpTime.size,yaxis.size,1))
+            exactDensMovie = np.zeros((self.prsr.interpTime.size,yaxis.size,1))
+        else:
+            exactDens = []
+            xaxis = np.unique(self.prsr.boxesX.flatten())
+            yaxis = np.unique(self.prsr.boxesY.flatten())
+            densMovie = np.zeros((self.prsr.interpTime.size,xaxis.size,yaxis.size,1))
+            exactDensMovie = np.zeros((self.prsr.interpTime.size,xaxis.size,yaxis.size,1))
         #print TBFmom
         for t in np.arange(self.prsr.interpTime.size):
             print(self.prsr.interpTime[t])
-            density = self.importanceSampling(tmpCWD, t, TBFcoord, TBFmom,
-                                              TBFphase, TBFpop, TBFamp, 
-                                              TBFstt, widths, atmNames)
-            redDens.append(density)
+            if not(self.prsr.internalType == "XY"):
+                density = self.importanceSampling(tmpCWD, t, TBFcoord, TBFmom,
+                                                  TBFphase, TBFpop, TBFamp, 
+                                                  TBFstt, widths, atmNames)
+                redDens.append(density)
             if ((self.prsr.internalType == "X") or
                 (self.prsr.internalType == "Y")):
-                exactDensity = self.calcExactDensity(tmpCWD, t, TBFcoord, 
-                                                     TBFmom, TBFphase, 
-                                                     TBFpop, TBFamp,
-                                                     TBFstt, widths, 
-                                                     atmNames, 
-                                                     np.amax(density))
+                exactDensity = self.calcExactRedDensity(
+                    tmpCWD, t, TBFcoord, 
+                    TBFmom, TBFphase, 
+                    TBFpop, TBFamp,
+                    TBFstt, widths, 
+                    atmNames, 
+                    np.amax(density)
+                )
                 exactRedDens.append(exactDensity)
+            elif self.prsr.internalType == "XY":
+                exactDensity = self.calcExactDensity(
+                    tmpCWD, t, TBFcoord, 
+                    TBFmom, TBFphase, 
+                    TBFpop, TBFamp,
+                    TBFstt, widths, 
+                    atmNames
+                )
+                exactDens.append(exactDensity)
 
-        for t in np.arange(self.prsr.interpTime.size):
-            for y in np.arange(yaxis.size):
-                densMovie[t, y, 0] = redDens[t][y] 
-                if ((self.prsr.internalType == "X") or
-                    (self.prsr.internalType == "Y")):
-                    exactDensMovie[t, y, 0] = exactRedDens[t][y]
+        if not(self.prsr.internalType == "XY"):
+            for t in np.arange(self.prsr.interpTime.size):
+                for y in np.arange(yaxis.size):
+                    densMovie[t, y, 0] = redDens[t][y] 
+                    if ((self.prsr.internalType == "X") or
+                        (self.prsr.internalType == "Y")):
+                        exactDensMovie[t, y, 0] = exactRedDens[t][y]
 
-        header = ['Time (atu)', 'internal', 'red. density']
-        grid = [self.prsr.interpTime, yaxis]
-        fileName = tmpCWD + '/redDens' 
-        for saveString in saveStringParams: 
-            fileName += saveString
-        fileName += '.dat'
-        writeGridFile(fileName, grid, densMovie, 1, header)
-
-        print(yaxis.size, exactDensMovie.shape)
-        if ((self.prsr.internalType == "X") or
-            (self.prsr.internalType == "Y")):
             header = ['Time (atu)', 'internal', 'red. density']
-            fileName = 'exactRedDens.dat' 
-            writeGridFile(fileName, grid, exactDensMovie, 1, header)
+            grid = [self.prsr.interpTime, yaxis]
+            fileName = tmpCWD + '/redDens' 
+            for saveString in saveStringParams: 
+                fileName += saveString
+            fileName += '.dat'
+            writeGridFile(fileName, grid, densMovie, 1, header)
+
+            print(yaxis.size, exactDensMovie.shape)
+            if ((self.prsr.internalType == "X") or
+                (self.prsr.internalType == "Y")):
+                header = ['Time (atu)', 'internal', 'red. density']
+                fileName = 'exactRedDens.dat' 
+                writeGridFile(fileName, grid, exactDensMovie, 1, header)
+        else:
+            for t in range(self.prsr.interpTime.size):
+                for x in range(xaxis.size):
+                    for y in range(yaxis.size):
+                        densMovie[t, x, y, 0] = exactDens[t][x][y] 
 
         return densMovie
         
@@ -656,8 +759,14 @@ class observables(object):
         #     densMovie[2, iT*xaxis.size:(iT+1)*xaxis.size].size = density[iT]
 
     def getCoherentExpectationValue(self, saveStringParams):
-        yaxis = np.unique(self.prsr.boxes.flatten())
-        fullDensity = np.zeros((self.prsr.interpTime.size,yaxis.size,1))
+        if not(self.prsr.internalType == "XY"):
+            yaxis = np.unique(self.prsr.boxes.flatten())
+            fullDensity = np.zeros((self.prsr.interpTime.size,yaxis.size,1))
+        else:
+            xaxis = np.unique(self.prsr.boxesX.flatten())
+            yaxis = np.unique(self.prsr.boxesY.flatten())
+            fullDensity = np.zeros((self.prsr.interpTime.size,xaxis.size,yaxis.size,1))
+
         nrSamples = 0
         TBFpop = self.psFile.getTBFpopulations()
         TBFamp = self.psFile.getTBFamplitude()
@@ -699,14 +808,25 @@ class observables(object):
                       )
         
         fullDensityMean = fullDensity / nrSamples
-        header = ['Time (atu)', 'internal', 'red. density']
-        grid = [self.prsr.interpTime, yaxis]
-        fileName = self.CWD + '/redDens' 
-        for saveString in saveStringParams: 
-            fileName += saveString
-        fileName += '.dat'
-        writeGridFile(fileName, grid, fullDensityMean, 1, header)
-
+        if not(self.prsr.internalType == "XY"):
+            header = ['Time (atu)', 'internal', 'red. density']
+            grid = [self.prsr.interpTime, yaxis]
+            fileName = self.CWD + '/redDens' 
+            for saveString in saveStringParams: 
+                fileName += saveString
+            fileName += '.dat'
+            writeGridFile(fileName, grid, fullDensityMean, 1, header)
+        else:
+            header = ['X', 'Y', 'Density']
+            grid = [xaxis, yaxis]
+            for iT, t in enumerate(self.prsr.interpTime): 
+                fileName = self.CWD + '/exactDens/dens' + str(t) 
+                fileName += '.dat' 
+                writeGridFile(fileName, grid, 
+                              fullDensityMean[iT,:,:,:],
+                              1, header, '30', '18')
+            
+            
 class internals(observables):
     def __init__(self, parser, cwd, psFile):
         observables.__init__(self, parser, cwd, psFile)
