@@ -2,9 +2,9 @@
 import numpy as np
 import os
 import importlib
-from commonmethods.filesys import *
-from commonmethods.misc import *
-from commonmethods.parse import *
+from src.filesys import *
+from src.misc import *
+from src.parse import *
 from .aimsinp import *
 from .aimsfiles import *
 from . import aimsmodandmet

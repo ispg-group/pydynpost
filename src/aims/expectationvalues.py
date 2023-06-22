@@ -5,12 +5,12 @@ from abc import ABCMeta
 from scipy import integrate
 import os
 import copy
-from commonmethods.filesys import *
-from commonmethods.misc import *
-from commonmethods.parse import *
-from commonmethods.writefiles import *
+from src.filesys import *
+from src.misc import *
+from src.parse import *
+from src.writefiles import *
 from .aimsinp import *
-from commonmethods.internals import *
+from src.internals import *
 b2A = 0.529177249
 A2b = 1./b2A
 

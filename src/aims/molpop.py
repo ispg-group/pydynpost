@@ -4,12 +4,12 @@ import abc
 from abc import ABCMeta
 import os
 import copy
-from commonmethods.filesys import *
-from commonmethods.misc import *
-from commonmethods.parse import *
+from src.filesys import *
+from src.misc import *
+from src.parse import *
 from .aimsinp import *
-from commonmethods.writefiles import *
-from commonmethods.internals import *
+from src.writefiles import *
+from src.internals import *
 from .aimsexpectationvalues import *
 
 class molpop(object):

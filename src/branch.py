@@ -2,10 +2,10 @@
 import os
 import importlib
 import numpy as np
-import commonmethods.globalattr as glAttr
-import commonmethods.griddata as grddt 
-import propagators.propagate as propagate
-import leaf
+import src.globalattr as glAttr
+import src.griddata as grddt 
+import src.propagate as propagate
+import src.leaf as leaf
 
 class Branch(glAttr.globalClass):
 
@@ -24,7 +24,7 @@ class Branch(glAttr.globalClass):
         if hasattr(self, 'nrRNGs'): 
             return 0.0
 
-        metric = 'commonmethods.' + metric
+        metric = 'src.' + metric
         metricModule = importlib.import_module(metric)
         getMetric = getattr(metricModule, 'get' + metric[0].upper() + metric[1:])
         metric = getMetric(self, str(self.geom))

@@ -2,9 +2,9 @@
 import numpy as np
 import os
 import math
-from commonmethods.filesys import *
-from commonmethods.misc import *
-from commonmethods.parse import *
+from src.filesys import *
+from src.misc import *
+from src.parse import *
 
 def getPopulation(drivingState, nrStates):
 

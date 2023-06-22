@@ -3,9 +3,9 @@ from __future__ import print_function
 import numpy as np
 import os
 import sys
-import const
-from stringmanip import * 
-from misc import *
+import src.const as const
+from src.stringmanip import splitline 
+from src.misc import *
 
 importedPromptTK = True
 try:

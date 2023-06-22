@@ -3,9 +3,9 @@ import numpy as np
 import os
 import math
 import importlib
-from commonmethods.filesys import *
-from commonmethods.misc import *
-from commonmethods.parse import *
+from src.filesys import *
+from src.misc import *
+from src.parse import *
 from .tshinp import *
 from . import tshfiles 
 from . import tshmodandmet

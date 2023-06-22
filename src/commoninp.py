@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
-import aimsscripts.aimsinp as aimsinp
-import tshscripts.tshinp as tshinp
+import src.aims.inp as aimsinp
+import src.tsh.inp as tshinp
 
 
 pckgQuestions = {'aims': aimsinp.pckgQuestion,

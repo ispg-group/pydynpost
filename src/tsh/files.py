@@ -2,11 +2,10 @@
 import numpy as np
 import os
 import abc
-import commonmethods.files 
 from abc import ABCMeta
-from commonmethods.filesys import *
-from commonmethods.misc import *
-from commonmethods.parse import *
+from src.filesys import *
+from src.misc import *
+from src.parse import *
 
 
 class readPopulation:

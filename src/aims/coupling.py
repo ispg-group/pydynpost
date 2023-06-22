@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 import numpy as np
 import os
-from commonmethods.filesys import *
-from commonmethods.misc import *
-from commonmethods.parse import *
+from src.filesys import *
+from src.misc import *
+from src.parse import *
 from .aimsinp import *
-from commonmethods.writefiles import *
+from src.writefiles import *
 
 
 class analyzeCouplings(object):

@@ -2,7 +2,7 @@
 import os
 import importlib
 import numpy as np
-import commonmethods.globalattr as glAttr
+import src.globalattr as glAttr
 
 class Leaf(glAttr.globalClass):
     def __init__(self, glbl, geom, rng):
@@ -12,7 +12,7 @@ class Leaf(glAttr.globalClass):
         self.geom = rng
 
     def getMetric(self, metric):
-        metric = 'commonmethods.' + metric
+        metric = 'src.' + metric
         metricModule = importlib.import_module(metric)
         getMetric = getattr(metricModule, 'get' + metric)
         metric = getMetric(self.glbl, str(self.geom), str(self.rng))

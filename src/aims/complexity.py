@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 import numpy as np
 import os
-from commonmethods.filesys import *
-from commonmethods.misc import *
-from commonmethods.parse import *
-from commonmethods.aimsinp import *
+from src.filesys import *
+from src.misc import *
+from src.parse import *
+from src.aimsinp import *
 
 class computationalComplexity(object):
     def __init__(self, parser, cwd, dirsInCwd, psFile):

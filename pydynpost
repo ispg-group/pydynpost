@@ -2,9 +2,9 @@
 import numpy as np
 import os
 import importlib
-from commonmethods.filesys import *
-from commonmethods.misc import *
-from commonmethods.parse import *
+from src.filesys import *
+from src.misc import *
+from src.parse import *
 
 def main(): 
     cwd = os.getcwd()
@@ -21,5 +21,19 @@ def main():
     postprocessing = mainMethod(parser, cwd) 
     postprocessing.performTasks()
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    import src.parse as parse
+
+    cwd = os.getcwd()
+    parser = parse.parseInput("dynpost.inp", cwd)
+    parser.addInput("dynMethod", "Which dynamics method was used?")
+    import src.commoninp as commoninp
+    parser = commoninp.initParser(parser) 
+    if hasattr(parser, 'parallel'):
+        import dask.distributed
+        import dask.array
+        cluster = dask.distributed.LocalCluster(n_workers=8,threads_per_worker=1)
+        client = dask.distributed.Client(cluster)
+    pcFMS = Tree(parser)
+    pcFMS.gatherGridData()
+    #pcFMS.getExpectationIFG('population')

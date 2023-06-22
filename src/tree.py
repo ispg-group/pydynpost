@@ -51,7 +51,7 @@ class Tree(glAttr.globalClass):
     
     def gatherGridData(self): 
         import zarr
-        from commonmethods.writefiles import writeDataset
+        from src.writefiles import writeDataset
         import time
         ti = time.time() 
 
@@ -188,18 +188,3 @@ class Tree(glAttr.globalClass):
         raise NotImplementedError
 
 
-if __name__ == '__main__':
-    import commonmethods.parse as parse
-    cwd = os.getcwd()
-    parser = parse.parseInput("dynpost.inp", cwd)
-    parser.addInput("dynMethod", "Which dynamics method was used?")
-    import commonmethods.commoninp as commoninp
-    parser = commoninp.initParser(parser) 
-    if hasattr(parser, 'parallel'):
-        import dask.distributed
-        import dask.array
-        cluster = dask.distributed.LocalCluster(n_workers=8,threads_per_worker=1)
-        client = dask.distributed.Client(cluster)
-    pcFMS = Tree(parser)
-    pcFMS.gatherGridData()
-    #pcFMS.getExpectationIFG('population')

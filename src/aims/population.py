@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 import numpy as np
 import os
-from commonmethods.filesys import *
-from commonmethods.misc import *
-from commonmethods.parse import *
+from population.filesys import *
+from population.misc import *
+from population.parse import *
 from .aimsinp import *
 
 class statePopulations(object):

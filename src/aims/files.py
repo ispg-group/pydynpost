@@ -3,9 +3,9 @@ import numpy as np
 from scipy import interpolate
 import os
 import time
-from commonmethods.filesys import *
-from commonmethods.misc import *
-from commonmethods.parse import *
+from src.filesys import *
+from src.misc import *
+from src.parse import *
 from .aimsinp import *
 b2A = 0.529177249
 A2b = 1./b2A
