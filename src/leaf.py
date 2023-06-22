@@ -2,7 +2,7 @@
 import os
 import importlib
 import numpy as np
-import globalattr as glAttr
+import commonmethods.globalattr as glAttr
 
 class Leaf(glAttr.globalClass):
     def __init__(self, glbl, geom, rng):
@@ -12,6 +12,7 @@ class Leaf(glAttr.globalClass):
         self.geom = rng
 
     def getMetric(self, metric):
+        metric = 'commonmethods.' + metric
         metricModule = importlib.import_module(metric)
         getMetric = getattr(metricModule, 'get' + metric)
         metric = getMetric(self.glbl, str(self.geom), str(self.rng))
@@ -23,7 +24,6 @@ def getSimpleIterator(glbl, geom):
     def leafSimpleIterator():
         for rng  in range(1, glbl.nrRNGs + 1):
             currLeaf = Leaf(glbl, geom, rng)
-            print(rng, geom)
             yield currLeaf
     
     return leafSimpleIterator() 

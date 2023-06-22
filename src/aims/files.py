@@ -2,6 +2,7 @@
 import numpy as np
 from scipy import interpolate
 import os
+import time
 from commonmethods.filesys import *
 from commonmethods.misc import *
 from commonmethods.parse import *
@@ -714,6 +715,14 @@ class processFiles(object):
             mErr = True
         return mErr, [coupTime, coup] 
 
+def setCWDPath(glbl, geom, rng = None):
+    if not (rng == None):
+        cwdPath = glbl.CWD + "/" + glb.RNGdir + rng + "/" 
+        cwdPath += glbl.geomDir + geom 
+    else:
+        cwdPath = glbl.CWD + "/" + glbl.geomDir + geom + "/"   
+
+    return cwdPath
 
 def resolveInputFilePath(glbl, cwdPath, fileName):
     if glbl.pckg == "molpro":
@@ -724,19 +733,128 @@ def resolveInputFilePath(glbl, cwdPath, fileName):
 
 
 def readPopulation(glbl, geom, rng = None):
-    if not (rng == None):
-        cwdPath = glbl.CWD + "/" + glb.RNGdir + rng + "/" 
-        cwdPath += glbl.geomDir + geom 
-        filePath = resolveInputFilePath(glbl, cwdPath, "N.dat") 
-    else:
-        cwdPath = glbl.CWD + "/" + glbl.geomDir + geom + "/"   
-        filePath = resolveInputFilePath(glbl, cwdPath, "N.dat") 
 
+    cwdPath = setCWDPath(glbl, geom, rng)
+    filePath = resolveInputFilePath(glbl, cwdPath, "N.dat") 
     rawData = np.genfromtxt(filePath)
     rawTime = rawData[:, 0] 
     rawPopulation = rawData[:, 1:rawData.shape[1]-1] 
 
     return rawTime, rawPopulation
     
+def parseCheckpointFileFor(glbl, queries, geom, rng = None):
+    
+#    ti = time.process_time() 
+    searchDict = {'pgrid': ('Positions', 'vector', glbl.nrParticles), 
+                  'pot': ('Energies', 'scalar', glbl.nrStates), 
+                  'coup': ('coupling', 'vector', glbl.nrParticles)}
 
+    transToQueries = {'Positions': 'pgrid', 'Energies': 'pot', 
+                      'coupling': 'coup'} 
+
+    keywords = []
+    for query in queries:
+        if query in searchDict.keys():
+            keywords.append(searchDict[query])
+
+    cwdPath = setCWDPath(glbl, geom, rng)
+    filePath = resolveInputFilePath(glbl, cwdPath, "Checkpoint.txt") 
+    outData = {'pgrid': [], 'pot': [], 'cgrid': {}, 'coup': {}}
+    for i in range(1, glbl.nrStates):
+        for j in range(i+1, glbl.nrStates+1):
+            outData['cgrid'][f"c{i}_{j}"] = []
+            outData['coup'][f"c{i}_{j}"] = []
+    
+    couplingStates = []
+
+    try: 
+        open(filePath, 'r')
+    except:
+        return True, []
+
+    with open(filePath, 'r') as checkpointFile:
+        startRead = False
+        #readCouplingSt = False
+        numLine = 0
+        currKeyword = ''
+        noCouplingData = []
+        gridNr = 0
+        for line in checkpointFile:
+            splitLine = line.strip().split()
+            if len(splitLine)  == 0:
+                continue
+                
+            for keyword in keywords:
+                if keyword[0] in line:
+                    if keyword[1] == 'vector': 
+                        numLine = 0
+                        numLines = keyword[2]
+                        startRead = True 
+                    elif keyword[1] == 'scalar':
+                        numLine = 0
+                        numLines = 1
+                        startRead = True 
+                    if keyword[0] == 'coupling':
+                        involvedStates = [int(x) for x in splitLine[2:4]]
+                    tempList = []
+                    currKeyword = keyword[0]
+                    break
+
+            if startRead:
+                if numLine == 0:
+                    numLine += 1
+                    continue
+
+                tempList.extend([float(x) for x in splitLine])
+
+                numLine += 1
+                if numLine > numLines:
+                    if (transToQueries[currKeyword] == 'pgrid'): 
+                        if glbl.model == 'zero':
+                            tempList = [tempList[i] for i in range(0,len(tempList),3)]
+
+                    if (transToQueries[currKeyword] == 'coup'): 
+                        if glbl.model == 'zero':
+                            tempList = [tempList[i] for i in range(0,len(tempList),3)]
+
+                        if np.allclose(tempList,np.zeros(len(tempList))):
+                            startRead = False
+                            continue
+
+                        st1 = involvedStates[0]
+                        st2 = involvedStates[1]
+                        if st1 > st2:
+                            statePair = f"c{st2}_{st1}" 
+                            tempList = [-tempList[i] for i in range(len(tempList))]
+                        else:
+                            statePair = f"c{st1}_{st2}" 
+
+                        if glbl.model == 'zero':
+                            tempList = [tempList[i] for i in range(0,len(tempList),3)]
+
+                        outData['cgrid'][statePair].append(outData['pgrid'][-1])
+                        outData['coup'][statePair].append(tempList)
+                    else:
+                        outData[transToQueries[currKeyword]].append(tempList) 
+                    startRead = False
+
+            #if 'Coupling status' in line:
+            #    readCouplingSt = True
+            #    continue
+
+            #if readCouplingSt:
+            #    readCouplingSt = False
+            #    if all(np.array(splitLine) == 'F'):
+            #        outData['cgrid'].pop()
+
+    #for iGridPoint, gridPoint in enumerate(outData['pgrid']):
+    #    if iGridPoint in noCouplingData:
+    #        continue
+
+    #    outData['cgrid'].append(outData['pgrid']) 
+         
+    #outData['coup'] = (outData['coup'], couplingStates) 
+#    tf = time.process_time() 
+#    print(tf-ti)
+    return False, outData 
 

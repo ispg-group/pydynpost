@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
-import aimsinp
-import tshinp
+import aimsscripts.aimsinp as aimsinp
+import tshscripts.tshinp as tshinp
 
 
 pckgQuestions = {'aims': aimsinp.pckgQuestion,
@@ -19,6 +19,11 @@ def initParser(parser):
         parser.addInternal("geomDir", "geom")
     if "population" in parser.todo:
         parser.addInput("nrStates", "How many states?")
+    parser.addInput("model", "Model system?")
+    if not hasattr(parser, "model"):
+        parser.addInternal("model", parser.pckg)
+    parser.addInput("nrStates", "How many states?")
+    parser.addInput("nrParticles", "How many states?")
     parser.addInput("maxTime", "What is the largest time step?")
     parser.addInput("step", "Which resolution do you want?")
     parser.addInternal("interpTime", np.arange(0, parser.maxTime + parser.step, 
@@ -49,7 +54,7 @@ def initParser(parser):
         parser.addInput("internalName", "Which atoms contribute?")
         assert (hasattr(parser, "internalType") and hasattr(parser, "internalName")) 
 
-    if parser.dynMethod == "aims":
-        parser = aimsinp.initParser(parser)
+    parser.addInput("parallel","Parallel scripting?")
+    parser = aimsinp.initParser(parser)
 
     return parser

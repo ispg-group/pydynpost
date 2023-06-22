@@ -76,8 +76,13 @@ class parseInput(object):
                 self.usrInput.__setattr__(variableName, valuescp)
 
     def __getattr__(self, name):
-        if hasattr(self.usrInput, name):
+        try: 
             return self.usrInput.__dict__[name]
-        else:
+        except:
             raise AttributeError("'{0}' object has no attribute '{1}'".format(
                                  self.__class__.__name__, name))
+#        if hasattr(self.usrInput, name):
+#            return self.usrInput.__dict__[name]
+#        else:
+#            raise AttributeError("'{0}' object has no attribute '{1}'".format(
+#                                 self.__class__.__name__, name))

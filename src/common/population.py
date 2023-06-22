@@ -3,8 +3,8 @@ import importlib
 import numpy as np
 from scipy import interpolate
 
-def getPopulation(glbl, geom, rng=None):
-    readMethods = importlib.import_module(glbl.dynMethod + 'files')
+def getPopulation(glbl,geom, rng=None):
+    readMethods = importlib.import_module(dynMethod + 'files')
     readPopulation = getattr(readMethods, 'readPopulation')
 
     if not (rng == None):

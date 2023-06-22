@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
 import os
-from .misc import *
+from commonmethods.misc import *
 
 def splitline(line, splittype):                                                                                                                                                                                                                                       
     lineContents = line.split(splittype)[1]
