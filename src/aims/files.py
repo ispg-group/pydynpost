@@ -6,7 +6,7 @@ import time
 from src.filesys import *
 from src.misc import *
 from src.parse import *
-from .aimsinp import *
+from src.aims.inp import *
 b2A = 0.529177249
 A2b = 1./b2A
 
@@ -271,58 +271,6 @@ class processFiles(object):
         
         return runningSt.astype(int)
 
-    def readPositions(self, ID, tmpCWD, numParticles,
-                      addAtmNames=True, bohr=False):
-        posFile = "positions." + str(ID) + ".xyz"
-        trajPosFile = self.inputFileName(tmpCWD, posFile) 
-        merr = True 
-        try:
-            f = open(trajPosFile, "r")
-            merr = False 
-        except:
-            pass
-
-        if not(merr):
-            with open(trajPosFile, "r") as posLines:
-                postimes = []
-                positions = []
-                startRcoord = False
-                lineNr = 0
-                curPos = []
-                curTime = 0
-                for line in posLines:
-                    if "Time" in line:
-                        curTime = float(line.split(",")[0].split(":")[1].strip())
-                        postimes.append(curTime)
-                        startRcoord = True
-                        lineNr += 1
-                        curPos = []
-                        continue
-
-                    if (startRcoord) and (lineNr < numParticles + 1):
-                        curline = line.strip().split()
-                        atmName = curline[0] + str(lineNr)
-                        if addAtmNames:
-                            atmPos  = [atmName] 
-                        else:
-                            atmPos  = []
-                        for i in curline[1:]:
-                            if bohr:
-                                atmPos.append(float(i)*A2b)
-                            else:
-                                atmPos.append(float(i))
-                        lineNr += 1
-                        curPos.append(atmPos)
-                    elif (startRcoord) and (lineNr == numParticles + 1):
-                        lineNr = 0
-                        startRcoord = False 
-                        positions.append(curPos)
-                else: 
-                    positions.append(curPos)
-
-            return merr, list(zip(postimes, positions))
-
-        return merr, [ ]
 
     def readMomenta(self, ID, tmpCWD, numParticles,
                     addAtmNames=True):
@@ -662,27 +610,6 @@ class processFiles(object):
             else:
                 return mErr, []
 
-    def readNrTBFs(self, fileName):
-        f = open(fileName, "r")
-        fileContents = []
-        for line in f:
-            if line != "\n" and ("--Time:" in line):
-                fileContents.append(line[:line.find('\n')]) 
-
-        timestep = []  
-        nrTBF = []
-        for line in fileContents:
-            tmp_line = line.split() 
-            for i in np.arange(0,len(tmp_line)):
-                if (tmp_line[i] == 'trajectories)'
-                    or tmp_line[i] == 'trajectory)'):
-                    nrTBF.append(int(tmp_line[i-1]))
-                    break
-            
-            if "Centroid" not in line:
-                timestep.append(float(tmp_line[1]))  
-
-        return timestep, nrTBF
 
     def readCSThresh(self, tmpCWD):
         mErr = False
@@ -717,10 +644,10 @@ class processFiles(object):
 
 def setCWDPath(glbl, geom, rng = None):
     if not (rng == None):
-        cwdPath = glbl.CWD + "/" + glb.RNGdir + rng + "/" 
-        cwdPath += glbl.geomDir + geom 
+        cwdPath = glbl.CWD + "/" + glb.RNGdir + str(rng) + "/" 
+        cwdPath += glbl.geomDir + str(geom)
     else:
-        cwdPath = glbl.CWD + "/" + glbl.geomDir + geom + "/"   
+        cwdPath = glbl.CWD + "/" + glbl.geomDir + str(geom)    
 
     return cwdPath
 
@@ -731,11 +658,38 @@ def resolveInputFilePath(glbl, cwdPath, fileName):
         filePath = cwdPath + "/" + fileName
     return filePath
 
+def tryOpenFile(fileToOpen, fromNp = False, message = None):
+    merr = False
+
+    if fromNp == True:
+        try:
+            f = np.genfromtxt(fileToOpen)
+        except: 
+            merr = f"Error while opening {fileToOpen}."  
+            if message != None:
+                merr += message 
+
+        return merr
+
+    try:
+        f = open(fileToOpen, "r")
+        f.close()
+    except:
+        merr = f"Error while opening {fileToOpen}."  
+        if message != None:
+            merr += message 
+
+    return merr
+    
+
 
 def readPopulation(glbl, geom, rng = None):
 
     cwdPath = setCWDPath(glbl, geom, rng)
     filePath = resolveInputFilePath(glbl, cwdPath, "N.dat") 
+    merr = tryOpenFile(filePath, fromNp=True) 
+    if merr != False:
+        raise IOError(merr)
     rawData = np.genfromtxt(filePath)
     rawTime = rawData[:, 0] 
     rawPopulation = rawData[:, 1:rawData.shape[1]-1] 
@@ -744,7 +698,6 @@ def readPopulation(glbl, geom, rng = None):
     
 def parseCheckpointFileFor(glbl, queries, geom, rng = None):
     
-#    ti = time.process_time() 
     searchDict = {'pgrid': ('Positions', 'vector', glbl.nrParticles), 
                   'pot': ('Energies', 'scalar', glbl.nrStates), 
                   'coup': ('coupling', 'vector', glbl.nrParticles)}
@@ -767,14 +720,10 @@ def parseCheckpointFileFor(glbl, queries, geom, rng = None):
     
     couplingStates = []
 
-    try: 
-        open(filePath, 'r')
-    except:
-        return True, []
+    merr = tryOpenFile(filePath) 
 
     with open(filePath, 'r') as checkpointFile:
         startRead = False
-        #readCouplingSt = False
         numLine = 0
         currKeyword = ''
         noCouplingData = []
@@ -785,76 +734,517 @@ def parseCheckpointFileFor(glbl, queries, geom, rng = None):
                 continue
                 
             for keyword in keywords:
-                if keyword[0] in line:
-                    if keyword[1] == 'vector': 
-                        numLine = 0
-                        numLines = keyword[2]
-                        startRead = True 
-                    elif keyword[1] == 'scalar':
-                        numLine = 0
-                        numLines = 1
-                        startRead = True 
-                    if keyword[0] == 'coupling':
-                        involvedStates = [int(x) for x in splitLine[2:4]]
-                    tempList = []
-                    currKeyword = keyword[0]
-                    break
-
-            if startRead:
-                if numLine == 0:
-                    numLine += 1
+                if not(keyword[0] in line):
                     continue
 
-                tempList.extend([float(x) for x in splitLine])
+                if keyword[1] == 'vector': 
+                    numLine = 0
+                    numLines = keyword[2]
+                    startRead = True 
+                elif keyword[1] == 'scalar':
+                    numLine = 0
+                    numLines = 1
+                    startRead = True 
+                if keyword[0] == 'coupling':
+                    involvedStates = [int(x) for x in splitLine[2:4]]
+                tempList = []
+                currKeyword = keyword[0]
+                break
 
+            if startRead == False:
+                continue
+
+            if numLine == 0:
                 numLine += 1
-                if numLine > numLines:
-                    if (transToQueries[currKeyword] == 'pgrid'): 
-                        if glbl.model == 'zero':
-                            tempList = [tempList[i] for i in range(0,len(tempList),3)]
+                continue
 
-                    if (transToQueries[currKeyword] == 'coup'): 
-                        if glbl.model == 'zero':
-                            tempList = [tempList[i] for i in range(0,len(tempList),3)]
+            tempList.extend([float(x) for x in splitLine])
 
-                        if np.allclose(tempList,np.zeros(len(tempList))):
-                            startRead = False
-                            continue
+            numLine += 1
+            if numLine <= numLines:
+                continue
 
-                        st1 = involvedStates[0]
-                        st2 = involvedStates[1]
-                        if st1 > st2:
-                            statePair = f"c{st2}_{st1}" 
-                            tempList = [-tempList[i] for i in range(len(tempList))]
-                        else:
-                            statePair = f"c{st1}_{st2}" 
+            if ((glbl.model == 'zero') and
+                ((transToQueries[currKeyword] == 'pgrid') or 
+                 (transToQueries[currKeyword] == 'coup'))): 
+                tempList = [
+                    tempList[i] for i in range(0,len(tempList),3)
+                ]
 
-                        if glbl.model == 'zero':
-                            tempList = [tempList[i] for i in range(0,len(tempList),3)]
-
-                        outData['cgrid'][statePair].append(outData['pgrid'][-1])
-                        outData['coup'][statePair].append(tempList)
-                    else:
-                        outData[transToQueries[currKeyword]].append(tempList) 
+            if (transToQueries[currKeyword] == 'coup'): 
+                if np.allclose(tempList,np.zeros(len(tempList))):
                     startRead = False
+                    continue
 
-            #if 'Coupling status' in line:
-            #    readCouplingSt = True
-            #    continue
+                st1 = involvedStates[0]
+                st2 = involvedStates[1]
+                if st1 > st2:
+                    statePair = f"c{st2}_{st1}" 
+                    tempList = [
+                        -tempList[i] for i in range(len(tempList))
+                    ]
+                else:
+                    statePair = f"c{st1}_{st2}" 
 
-            #if readCouplingSt:
-            #    readCouplingSt = False
-            #    if all(np.array(splitLine) == 'F'):
-            #        outData['cgrid'].pop()
+                outData['cgrid'][statePair].append(
+                    outData['pgrid'][-1]
+                )
+                outData['coup'][statePair].append(tempList)
+            else:
+                outData[transToQueries[currKeyword]].append(tempList) 
+            startRead = False
 
-    #for iGridPoint, gridPoint in enumerate(outData['pgrid']):
-    #    if iGridPoint in noCouplingData:
-    #        continue
-
-    #    outData['cgrid'].append(outData['pgrid']) 
-         
-    #outData['coup'] = (outData['coup'], couplingStates) 
-#    tf = time.process_time() 
-#    print(tf-ti)
     return False, outData 
+
+def framesGenerator_vector(glbl, trajFile, addAtmNames=True, bohr=False):
+    def _framesGenerator_vector():
+        with open(trajFile, "r") as trajLines:
+            startRead = False
+            lineNr = 0
+            for line in trajLines:
+                if "Time" in line:
+                    currTime = float(
+                        line.split(",")[0].split(":")[1].strip()
+                    )
+                    startRead = True
+                    lineNr += 1
+                    if addAtmNames:
+                        currCoord = {}
+                    else: 
+                        currCoord = []
+                    continue
+
+                if startRead == False:
+                    continue
+
+                if lineNr == (glbl.nrParticles + 1):
+                    lineNr = 0
+                    startRead = False 
+
+                    yield {
+                        'time': currTime, 
+                        'value': currCoord
+                    }
+                    continue
+
+                currLine = line.strip().split()
+                #print(currline)
+                atmName = currLine[0] + str(lineNr)
+                atmCoord  = []
+
+                for i in currLine[1:]:
+                    if bohr:
+                        atmCoord.append(float(i)*A2b)
+                    else:
+                        atmCoord.append(float(i))
+                lineNr += 1
+                
+                if addAtmNames == True:
+                    currCoord[atmName] = np.array(atmCoord)
+                else:
+                    currCoord.append(atmCoord)
+
+    return _framesGenerator_vector
+
+def framesGenerator_scalar(trajFile, dtype = 'f8', dataRange = None,
+                           reverse = False):
+    def _framesGenerator_scalar():
+        trajData = np.genfromtxt(trajFile) 
+        if reverse == True:
+            trajData = trajData[::-1] 
+        for trajDatum in trajData: 
+            if dataRange != None:  
+                yield {
+                    'time': trajDatum[0], 
+                    'value': trajDatum[dataRange]
+                }
+                continue
+
+            if dtype == 'f8':
+                yield {
+                    'time': trajDatum[0], 
+                    'value': trajDatum[1]
+                }
+            elif dtype == 'c8': 
+                yield {
+                    'time': trajDatum[0], 
+                    'value': trajDatum[2] + 1.j * trajDatum[3]
+                }
+    return _framesGenerator_scalar
+
+
+def linInterpolate(time, prev, current, vector = True):
+    if np.isclose(time, prev['time'], rtol=1e-7, atol=1e-10):
+        return prev['value'] 
+
+    if np.isclose(time, current['time'], rtol=1e-7, atol=1e-10):
+        return current['value']
+        
+    stepSize = time - prev['time'] 
+    if vector != True: 
+        secant = (current['value'] - prev['value'])
+        secant /= (current['time'] - prev['time']) 
+        return prev[1] + secant * stepSize  
+
+    interpVector = {} 
+    for atmName in current['value'].keys():
+        secant = (current['value'][atmName] - prev['value'][atmName])
+        secant /= (current['time'] - prev['time']) 
+        interpVector[atmName] = np.array(secant)
+        
+    return interpVector
+        
+
+def initialCondition(glbl, geom, rng = None, readMom = False):
+    cwdPath = setCWDPath(glbl, geom, rng)
+    posFile = "Geometry.dat"
+    filePath = resolveInputFilePath(glbl, cwdPath, posFile) 
+    merr = False 
+    merr = tryOpenFile(filePath)
+
+    if merr != False:
+        return merr, [ ]
+
+    with open(filePath, 'r') as geomFile:
+        lineNr = 0
+        atomNr = 0
+        momNr = 0
+        startRead = False
+        currCoord = {}
+        for line in geomFile:
+            lineNr += 1
+            if lineNr == 2: 
+                startRead = True
+                atomNr += 1
+                continue
+            
+            if startRead == False:
+                continue
+
+            if (lineNr <= (2 + glbl.nrParticles)):
+                currLine = line.strip().split()
+                atmName = currLine[0] + str(atomNr)
+                currCoord[atmName] = np.genfromtxt(currLine[1:]) 
+                atomNr += 1
+
+            if ((readMom == False) and 
+                (lineNr == (2 + glbl.nrParticles))):
+                break
+            elif ((readMom == True) and 
+                  (lineNr == (2 + glbl.nrParticles))): 
+                momNr += 1
+                continue
+            elif lineNr > (3 + glbl.nrParticles):
+                currLine = line.strip().split()
+                for iKey, key in enumerate(currCoord.keys()):
+                    if momNr == (iKey + 1):
+                        currCoord[key] = np.genfromtxt(currLine)
+                momNr += 1
+
+
+    return merr, currCoord
+   
+
+#        if type(time) == list:
+#            quantities = []
+#            for _time in time:
+#                while True:
+#                    if not(_time in [prev['time'],current['time']]): 
+#                        try:
+#                            prev, current = current, next(frames) 
+#                        except:
+#                            break
+#                    else: 
+#                        quantity = linInterpolate(time, prev, current)
+#                        quantities.append(quantity) 
+#                        frames = _frames()
+#                        break
+
+def readTrajFile(glbl, trajFile, quantityType = 'vector', 
+                 fromDump = False, dtype = 'f8', time = None,
+                 reverse = False):
+
+    if quantityType == 'vector': 
+        if fromDump == False:
+            frames = framesGenerator_vector(glbl, trajFile) 
+    else:
+        if fromDump == False:
+            _frames = framesGenerator_scalar(trajFile, dtype)
+            frames = _frames()
+        else:
+            _frames = framesGenerator_scalar(
+                trajFile, dtype=dtype, fromDump=True, 
+                dataRange=dataRange, reverse=reverse
+            )
+            frames = _frames()
+    prev, current = next(frames), next(frames)  
+        
+    if time != None: 
+        if quantityType == 'vector': 
+            quantity = {
+                atmName: np.zeros(3) 
+                for atmName in prev['value'].keys() 
+            }  
+        else:
+            quantity = 0 
+
+        while True:
+            if not(time in [prev['time'],current['time']]): 
+                try:
+                    prev, current = current, next(frames) 
+                except:
+                    break
+            else: 
+                quantity = linInterpolate(time, prev, current) 
+                break
+
+        return quantity 
+
+    if quantityType == 'vector': 
+        quantity = np.zeros(glbl.interpTime, glbl.nrParticles, 3) 
+    else:
+        quantity = np.zeros(glbl.interpTime)
+
+    for iTime, time in enumerate(glbl.interpTime):
+        if time > current['time']: 
+            try:
+                prev, current = current, next(frames) 
+            except:
+                break
+
+            if quantityType == 'vector': 
+                quantity[iTime, :, :] = linInterpolate(
+                    time, prev, current
+                )
+            else:
+                quantity[iTime] = linInterpolate(
+                    time, prev, current
+                )
+
+
+    return quantity 
+
+def readPositions(glbl, geom, rng = None, trajID = None, time = None,
+                  fromDump = False, addAtmNames=True, bohr=False):
+
+    if glbl.model == 'zero' and time == 0.0: 
+        return initialCondition(glbl, geom, rng=rng)
+    cwdPath = setCWDPath(glbl, geom, rng)
+    posFile = "positions." + str(trajID) + ".xyz"
+    filePath = resolveInputFilePath(glbl, cwdPath, posFile) 
+    merr = False 
+    merr = tryOpenFile(filePath)
+
+    if merr != False:
+        return merr, [ ]
+
+    positions = readTrajFile(glbl, filePath, time = time) 
+    return merr, positions
+
+def readMomenta(glbl, geom, rng = None, trajID = None, 
+                time = None, fromDump = False):
+
+    if glbl.model == 'zero' and time == 0.0: 
+        return initialCondition(glbl, geom, rng=rng, readMom=True)
+    cwdPath = setCWDPath(glbl, geom, rng)
+    momFile = "momenta." + str(trajID) + ".xyz"
+    filePath = resolveInputFilePath(glbl, cwdPath, momFile) 
+    merr = False 
+    merr = tryOpenFile(filePath)
+
+    if merr != False:
+        return merr, [ ]
+
+    momenta = readTrajFile(glbl, filePath, time = time) 
+    return merr, momenta
+
+def readPhase(glbl, geom, rng = None, trajID = None, time = None):
+
+    if glbl.model == 'zero' and time == 0.0: 
+        return False, 0.0
+    cwdPath = setCWDPath(glbl, geom, rng)
+    trajDumpFile = 'TrajDump.' + str(trajID)
+    filePath = resolveInputFilePath(glbl, cwdPath, trajDumpFile) 
+    merr = False
+    if (trajDump in os.listdir(tmpCWD)):
+        merr = tryOpenFile(filePath, fromNp=True)
+
+        if merr != False:
+            return merr, [ ]
+
+        merr, phase = readTrajDumpFile(
+            trajDumpData, dataRange=(-5,None), 
+            quantityType='scalar', time=time 
+        )
+        return merr, phase
+
+    phaseFile = 'Phase.' + str(trajID)
+    filePath = resolveInputFilePath(glbl, cwdPath, phaseFile) 
+    merr = tryOpenFile(
+        filePath, fromNp=True, message=" Are you sure it exists?"
+    )
+
+    if merr != False:
+        return merr, [ ]
+
+    phase = readTrajFile(
+        glbl, filePath, quantityType='scalar',
+        dtype='f8', time=time 
+    )
+
+    return merr, phase
+
+def readAmplitude(glbl, geom, rng = None, trajID = None, time = None,
+                  reverse = False):
+    def _readAmplitude(_time = None):
+        if glbl.model == 'zero' and _time == 0.0: 
+            if trajID == 1:
+                initAmp = 1.0 + 0.j
+            else:
+                initAmp = 0.0 + 0.0j
+            return False, initAmp 
+        cwdPath = setCWDPath(glbl, geom, rng)
+        ampFile = 'Amp.' + str(trajID)
+        filePath = resolveInputFilePath(glbl, cwdPath, ampFile) 
+        merr = False
+        merr = tryOpenFile(filePath, fromNp=True)
+
+        if merr != False:
+            return merr, [ ]
+
+        amp = readTrajFile(
+            glbl, filePath, quantityType='scalar',
+            dtype='c8', time=_time, reverse=reverse
+        )
+
+        return merr, amp
+
+    if isinstance(time,np.ndarray):
+        amps = []
+        times = time[:]
+        merr = False
+        for time in times:
+            merr, amp = _readAmplitude(_time=time) 
+            if merr != False:
+                raise IOError(merr)
+            amps.append(amp)
+
+        return merr, amps
+
+    return _readAmplitude(_time=time) 
+            
+
+def readAmplitudeDot(glbl, geom, rng = None, trajID = None, time = None):
+    cwdPath = setCWDPath(glbl, geom, rng)
+    ampDotFile = 'AmpDot.' + str(trajID)
+    filePath = resolveInputFilePath(glbl, cwdPath, ampDotFile) 
+    merr = False
+    merr = tryOpenFile(filePath, fromNp=True)
+
+    if merr != False:
+        return merr, [ ]
+
+    ampDot = readTrajFile(
+        glbl, filePath, quantityType='scalar',
+        dtype='c8', time=time 
+    )
+
+    return merr, ampDot
+
+def readStateID(glbl, geom, rng = None, trajID = None):
+    cwdPath = setCWDPath(glbl, geom, rng)
+    merr = False
+    if trajID == 1: 
+        controlFile = 'Control.dat'
+        filePath = resolveInputFilePath(glbl, cwdPath, controlFile) 
+        merr = tryOpenFile(filePath)
+        
+        if merr != False:
+            return merr, None 
+
+        with open(filePath, "r") as controlLines:
+            for controlLine in controlLines:
+                if not('InitState' in controlLine):
+                    continue
+
+                try: 
+                    stateStr = controlLine.strip().split('=')[1]
+                    stateID = int(stateStr)
+                except:
+                    stateStr = controlLine.strip().split('=')[1]
+                    stateID = int(stateStr.split()[0])
+                break
+
+        return merr, stateID 
+
+    spawnFile = "Spawn." + str(trajID)
+    filePath = resolveInputFilePath(glbl, cwdPath, spawnFile) 
+    merr = tryOpenFile(filePath)
+    
+    if merr != False:
+        return merr, None 
+
+    with open(filePath, "r") as spawnLines:
+        for iSpawnLine, spawnLine in enumerate(spawnLines):
+            if iSpawnLine == 1:
+                stateID = int(spawnLine.strip().split()[3]) 
+                break
+
+    return merr, stateID
+
+def readNrTBFs(glbl, geom, rng = None):
+    cwdPath = setCWDPath(glbl, geom, rng)
+    fmsFile = 'FMS.out'
+    filePath = resolveInputFilePath(glbl, cwdPath, fmsFile) 
+    merr = False
+    merr = tryOpenFile(filePath)
+
+    if merr != False:
+        raise IOError(merr) 
+
+    fileContents = []
+    with open(filePath, 'r') as fmsLines:
+        for fmsLine in fmsLines:
+            if fmsLine != "\n" and ("--Time:" in fmsLine):
+                fileContents.append(fmsLine[:fmsLine.find('\n')]) 
+
+    timestep = []  
+    nrTBF = []
+    for fileContent in fileContents:
+        tmp_line = fileContent.split() 
+        for i in np.arange(0,len(tmp_line)):
+            if (tmp_line[i] == 'trajectories)'
+                or tmp_line[i] == 'trajectory)'):
+                nrTBF.append(int(tmp_line[i-1]))
+                break
+        
+        if "Centroid" not in fileContent:
+            timestep.append(float(tmp_line[1]))  
+
+    return timestep, nrTBF
+
+def readWidths(glbl, geom, rng = None):
+    cwdPath = setCWDPath(glbl, geom, rng)
+    fmsFile = "FMS.out"
+    filePath = resolveInputFilePath(glbl, cwdPath, fmsFile) 
+    merr = False 
+    merr = tryOpenFile(filePath)
+    if merr != False:
+        raise IOError(merr) 
+    with open(filePath, "r") as f:
+        start = 0
+        tmpWidths = []
+        for line in f:
+            if "Particle #" in line:
+                start += 1
+                continue
+            
+            if (start > 0) and (start < 3):
+                start += 1
+            elif (start == 3):
+                tmpWidth = float(line.split(":")[1].strip()) 
+                tmpWidths.extend([tmpWidth for i in range(3)])
+                start = 0
+
+    return merr, np.array(tmpWidths) 
 

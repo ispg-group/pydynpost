@@ -4,19 +4,22 @@ import importlib
 import numpy as np
 import src.globalattr as glAttr
 import src.griddata as grddt 
-import src.propagate as propagate
+#import src.propagate as propagate
+import src.traj as traj
 import src.leaf as leaf
 
 class Branch(glAttr.globalClass):
 
-    def __init__(self, glbl, geom):
+    def __init__(self, glbl, geom, time = None):
 
         super().__init__(glbl)
         self.geom = geom
         if hasattr(self, 'nrRNGs'):
             self.leaves = leaf.getSimpleIterator(glbl, geom) 
-        else:
-            self.trajs = traj.getSimpleIterator(glbl, geom) 
+        #elif self.dynMethod == 'aims':
+        #    self.nTraj, self.trajs = traj.getSimpleIterator(
+        #        glbl, geom, rng=None, time=time
+        #    ) 
         self.leaves = []
 
     def getMetric(self, metric):
@@ -24,31 +27,35 @@ class Branch(glAttr.globalClass):
         if hasattr(self, 'nrRNGs'): 
             return 0.0
 
-        metric = 'src.' + metric
-        metricModule = importlib.import_module(metric)
+        metricModule = 'src.' + metric
+        metricModule = importlib.import_module(metricModule)
         getMetric = getattr(metricModule, 'get' + metric[0].upper() + metric[1:])
         metric = getMetric(self, str(self.geom))
         return metric
 
     def populateData(self):
-        tmpTrajs = []
-        for _traj in self.trajs:
-            _traj.getID()
-            _traj.getPositions()
-            _traj.getMomenta()
-            _traj.getPhase()
-            error = _traj.getAmplitude()
-            error = _traj.getDotAmplitude()
-            tmpTrajs.append(_traj)
-        
-        self.trajs = tmpTrajs
-        
-        if error == True:
-            self.postPropagate()
+        if self.dynMethod == 'aims':
+            tmpTrajs = []
+            for _traj in self.trajs:
+                _traj.getStateID()
+                _traj.getPositions()
+                _traj.getMomenta()
+                _traj.getWidths()
+                _traj.getPhase()
+                if self.model == 'zero':
+                    _traj.pruneData()
+                _traj.getAmplitude()
+                error = _traj.getAmplitudeDot()
+                if error != False:
+                    _traj.calcAmplitudeDot()
+                tmpTrajs.append(_traj)
 
-    def postPropagate(self):
-        propagate(self) 
-        self.saveNewAmps()
+            self.trajs = tmpTrajs
+            
+        else: 
+            self.getPositions()
+            self.getMomenta()
+            self.getPhase()
 
     def saveNewAmps(self):
         for traj_ in self.trajs: 
@@ -71,17 +78,17 @@ def getSimpleIterator(glbl):
 
 def getPairIterator(glbl):
     
-    def branchPairIterator():
+    def branchPairIterator(time = None):
         for geom1 in range(1, glbl.sampleSize + 1):
             if geom1 in glbl.dupList:
                 continue
 
             for geom2 in range(geom1, glbl.sampleSize + 1):
-                currBranch1 = Branch(glbl, geom1)
-                currBranch2 = Branch(glbl, geom2)
+                currBranch1 = Branch(glbl, geom1, time=time)
+                currBranch2 = Branch(glbl, geom2, time=time)
                 yield currBranch1, currBranch2
             
-    pairIterator = branchPairIterator()
+    pairIterator = branchPairIterator
          
     return pairIterator 
 

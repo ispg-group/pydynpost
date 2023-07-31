@@ -19,10 +19,11 @@ def initParser(parser):
         parser.addInternal("geomDir", "geom")
     if "population" in parser.todo:
         parser.addInput("nrStates", "How many states?")
+    if not hasattr(parser, "nrStates"):
+        parser.addInput("nrStates", "How many states?")
     parser.addInput("model", "Model system?")
     if not hasattr(parser, "model"):
         parser.addInternal("model", parser.pckg)
-    parser.addInput("nrStates", "How many states?")
     parser.addInput("nrParticles", "How many states?")
     parser.addInput("maxTime", "What is the largest time step?")
     parser.addInput("step", "Which resolution do you want?")

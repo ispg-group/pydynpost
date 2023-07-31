@@ -2,7 +2,8 @@
 import importlib
 
 def getGridData(glbl, geom, rng=None):
-    readMethods = importlib.import_module(glbl.dynMethod + 'scripts.files')
+    readModule = 'src.' + glbl.dynMethod + '.files'
+    readMethods = importlib.import_module(readModule)
     parseCheckpointFileFor = getattr(readMethods, 'parseCheckpointFileFor')
     err, outData = parseCheckpointFileFor(glbl, ['pgrid', 'pot', 'cgrid', 'coup'],
                                           geom, rng)

@@ -23,6 +23,7 @@ def main():
 
 if __name__ == '__main__':
     import src.parse as parse
+    from src.tree import Tree
 
     cwd = os.getcwd()
     parser = parse.parseInput("dynpost.inp", cwd)
@@ -35,5 +36,9 @@ if __name__ == '__main__':
         cluster = dask.distributed.LocalCluster(n_workers=8,threads_per_worker=1)
         client = dask.distributed.Client(cluster)
     pcFMS = Tree(parser)
-    pcFMS.gatherGridData()
-    #pcFMS.getExpectationIFG('population')
+    #pcFMS.
+    #pcFMS.gatherGridData()
+    t1, t2 = pcFMS.getExpectationIFG('population')
+    data = np.array([parser.interpTime, t1[:,1], t2[:,1]]).T 
+    np.savetxt('N.dat', data)
+    #pcFMS.propagatePost()

@@ -3,8 +3,9 @@ import os
 import importlib
 import itertools
 import numpy as np
-import globalattr as glAttr
-import branch
+import src.globalattr as glAttr
+import src.branch as branch
+import src.builds.builder as builder
 
 class Tree(glAttr.globalClass):
 
@@ -28,13 +29,13 @@ class Tree(glAttr.globalClass):
         partialSum = 0.0
         partialSquareSum = 0.0
 
-        for branch in self.branches:
+        for _branch in self.branches:
 
-            summand = branch.getMetric(metric)
+            summand = _branch.getMetric(metric)
             squareSummand = summand ** 2 
 
-            for leaf in branch.leaves:
-                tmpSummand = leaf.getMetric(metric) 
+            for _leaf in _branch.leaves:
+                tmpSummand = _leaf.getMetric(metric) 
                 summand   += tmpSummand
                 squareSummand += tmpSummand ** 2 
 
@@ -47,12 +48,15 @@ class Tree(glAttr.globalClass):
         stdTimeTrace = partialSquareSum / self.nrUnqSamples - mTimeTrace**2 
         stdTimeTrace = np.sqrt(1./(self.nrUnqSamples - 1) * stdTimeTrace)
 
+        print(mTimeTrace[:20,1])
         return mTimeTrace, stdTimeTrace
     
     def gatherGridData(self): 
         import zarr
         from src.writefiles import writeDataset
         import time
+        import dask
+        import dask.delayed
         ti = time.time() 
 
         PGrid = []
@@ -148,6 +152,8 @@ class Tree(glAttr.globalClass):
 
     def propagatePost(self):
         init = True
+        tmpBuilder = builder.Builder()
+        self.builder = builder.generateMatrixElements(tmpBuilder)
 
         if hasattr(self, 'nrRNGs'):
             for branch in self.branches:
@@ -170,19 +176,33 @@ class Tree(glAttr.globalClass):
 
         i = -1
         j = -1
-        for branch1, branch2 in self.branchPairs:
+        for branch1, branch2 in self.branchPairs(time):
             branch1.populateData()
             if branch1.geom != branch2.geom:
                 branch2.populateData()
-                j += 0
+                j += 1
+                self.S[i, j] = self.calculateS(branch1, branch2)  
+                self.H[i, j] = self.calculateH(branch1, branch2)  
             else:
                 i += 1
                 j  = i
+                print(i, j)
+                Sc, Dc, S  = self.calculateS(branch1, branch1)  
+                print(S)
+                self.H[i, j] = self.calculateH(branch1, branch1)  
 
-            self.S[i, j] = self.calculateS(branch1, branch2)  
 
         self.SInv = self.invertS()
         self.Heff = np.linalg.matmul(self.SInv, self.H) 
+    
+    def calculateS(self, branch1, branch2):  
+        return self.builder.calculateS(branch1, branch2)
+        
+    def calculateH(self, branch1, branch2):  
+        return self.builder.calculateH(branch1, branch2)
+
+    def invertS(self):
+        raise NotImplementedError
 
     def initAmps(self, time):
         raise NotImplementedError
