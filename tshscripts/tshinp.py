@@ -44,4 +44,7 @@ def initParser(parser):
         parser.addInput("couplingType", "What type of effective nac was used?")
         parser.addInput("CSThresh", "What type of effective nac was used?")
 
+    if "monitor" in parser.todo: 
+        parser.addInput("monitorObservable", "Which observable do you want to monitor?")
+
     return parser

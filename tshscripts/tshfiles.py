@@ -2,11 +2,14 @@
 import numpy as np
 import os
 import abc
-import commonmethods.files 
+import tempfile
+import commonmethods.files as files
 from abc import ABCMeta
 from commonmethods.filesys import *
 from commonmethods.misc import *
 from commonmethods.parse import *
+b2A = 0.529177249
+A2b = 1./b2A
 
 class processFiles(object):
     __metaclass__ = ABCMeta
@@ -35,7 +38,22 @@ class processFiles(object):
     def readPotEnergies(self):
         pass
 
-    def readPositions(self, trajFileName, initFileName): 
+    @abc.abstractmethod
+    def readKineticEnergy(self):
+        pass
+
+    @abc.abstractmethod
+    def readTotalEnergy(self):
+        pass
+
+    def readPositions(self): 
+        if self.prsr.code == "ABIN":
+            trajFileName = 'movie.xyz'
+            initFileName = 'geom'
+        elif self.prsr.code == "SHARC":
+            trajFileName = 'output.dat'
+            initFileName = 'output.dat'
+
         if self.prsr.nrRNGs != 0: 
             fileName  = self.CWD + "/" + self.prsr.RNGdir
             fileName += str(1) + "/" + self.prsr.geomDir
@@ -211,7 +229,7 @@ class processFilesABIN(processFiles):
                     else:
                         atomName = curSpltLine[0]
                         atomPos  = [atomName + str(nrLines - 1)]
-                        atomPos.extend([float(x)*0.529177 for x in curSpltLine[1:]])
+                        atomPos.extend([float(x)*b2A for x in curSpltLine[1:]])
                         curPos.append(atomPos)
                         positions.append(curPos)
                         startRead = False
@@ -260,8 +278,97 @@ class processFilesSHARC(processFiles):
     def readStatePopulations(self): 
         pass
 
-    def readPositions(self): 
-        pass
+    def addPositions(self, initFileName, trajFileName, nrAtoms, outTraj):
+        with tempfile.NamedTemporaryFile(delete=False) as tempTrajFile:
+            self.convert2XYZ(trajFileName, tempTrajFile, nrAtoms)
+            tempTrajFile.close()
+            readTimestep = lambda a: float(a[1]) 
+            outTraj.append(files.addTraj(tempTrajFile.name, nrAtoms, readTimestep))
+            #print(outTraj)
+
+
+    def convert2XYZ(self, outputFile, tempTrajFile, nrAtoms):
+        with open(outputFile, "r") as lines:
+            readStep = False
+            readGeom = False
+            readElements = False
+            nrLines = 0
+            time = []
+            traj = []
+            geom = []
+            elements = []
+            for line in lines:
+                if 'Elements' in line:
+                    readElements = True
+                    nrLines += 1
+                    continue
+
+                if readElements == True:
+                    elements.append(line.strip()) 
+                    nrLines += 1 
+                    if nrLines > nrAtoms:
+                        nrLines = 0 
+                        readElements = False
+                    continue
+
+                if 'Step' in line:
+                    readStep = True
+                    continue
+
+                if readStep == True:
+                    time.append(int(line.strip())*self.prsr.step)
+                    readStep = False
+                    continue
+
+                if 'Geometry' in line:
+                    readGeom = True
+                    nrLines += 1
+                    continue
+
+                if readGeom == True:
+                    atom = [elements[nrLines-1]]
+                    atom.extend([float(x)*b2A for x in line.strip().split()])
+                    geom.append(atom)
+                    nrLines += 1
+                    if nrLines > nrAtoms:
+                        nrLines = 0
+                        readGeom = False
+                        traj.append(geom)
+                        geom = []
+                    continue
+                     
+        for t, geom in zip(time, traj): 
+            outLine = '{a:11s}'.format(a=' ')
+            outLine += '{nat:3d}\n'.format(nat=nrAtoms)
+            outLine += '{a:5s}t={a:7s}{t:9.5f}\n'.format(a=' ', t=t)
+            for atom in geom:
+                outLine += '{name:2s}'.format(name=atom[0])
+                for coord in atom[1:]:
+                    outLine += '{a:5s}{atm:12.10f}'.format(atm=coord, a=' ')
+                outLine += '\n'
+            tempTrajFile.write(str.encode(outLine))
+
+    def getNrAtoms(self, fileName):
+        nrAtoms = 0
+        with open(fileName, "r") as lines:
+            for line in lines: 
+                if 'natom' in line:
+                    nrAtoms = int(line.strip().split()[1])
+
+        if (nrAtoms == 0):
+            raise ValueError('Number of atoms is zero?!')
+
+        return nrAtoms
+
+    def readEnergies(self, fileName):
+        with open(fileName, "r") as lines:
+        return potEnergies, kineticEnergy, totalEnergy 
 
     def readPotEnergies(self):
+        pass
+
+    def readKineticEnergy(self):
+        pass
+
+    def readTotalEnergy(self):
         pass
