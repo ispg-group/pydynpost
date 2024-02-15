@@ -2,7 +2,7 @@
 import numpy as np
 import os
 import math
-from filesys import *
+from commonmethods.filesys import *
 from commonmethods.misc import *
 from commonmethods.parse import *
 from commonmethods.internals import *
@@ -38,7 +38,28 @@ class internals(object):
 
     
     def getInternals(self):
-        positions = self.psFile.readPositions("movie.xyz", "geom")
+        positions = self.psFile.readPositions()#"movie.xyz", "geom")
+        for geom in np.arange(self.prsr.sampleSize
+                              -len(self.prsr.dupList)):
+            geomInternal  = []
+            geomInternalT = []
+            if not(self.prsr.nrRNGs == 0):
+                for rng in np.arange(self.prsr.nrRNGs):
+                    rngInternal  = []
+                    rngInternalT = []
+                    self.addInternal(positions[geom][rng], rngInternal,  
+                                               rngInternalT)
+                    geomInternal.append(rngInternal)
+                    geomInternalT.append(rngInternalT)
+            else:
+                print(len(positions[geom]))
+                self.addInternal(positions[geom], geomInternal, geomInternalT)
+                saveFile = self.CWD + "/" + self.prsr.geomDir + str(geom + 1) + "/"
+                saveFile += self.prsr.internalType + self.prsr.internalName + ".dat" 
+                writeNPFile(2, saveFile, [np.array(geomInternalT), 
+                                          np.array(geomInternal)], 
+                            fmtStyle = "%8.2f %30.18e")
+
 
 
 class molpop(object): 
@@ -97,48 +118,48 @@ class molpop(object):
         if hasattr(self.prsr, "sampleSize"): 
             for geom in np.arange(self.prsr.sampleSize
                                   -len(self.prsr.dupList)):
-                geomInternal  = []
-                geomInternalT = []
-                if not(self.prsr.nrRNGs == 0):
-                    for rng in np.arange(self.prsr.nrRNGs):
-                        rngInternal  = []
-                        rngInternalT = []
+                    geomInternal  = []
+                    geomInternalT = []
+                    if not(self.prsr.nrRNGs == 0):
+                        for rng in np.arange(self.prsr.nrRNGs):
+                            rngInternal  = []
+                            rngInternalT = []
+                            for bond in equivalentBonds: 
+                                equivInternal  = []
+                                equivInternalT = []
+                                self.internals.addInternal(positions[geom][rng], equivInternal,  
+                                                           equivInternalT, internalName = bond)
+                                saveFile = self.CWD + "/" + self.prsr.RNGdir + str(rng + 1) 
+                                saveFile += "/" + self.prsr.geomDir + str(geom + 1) + "/"
+                                saveFile += self.prsr.internalType + bond + ".dat" 
+                                writeNPFile(2, saveFile, [np.array(equivInternalT)*0.02418884254, 
+                                                          np.array(equivInternal)], 
+                                            fmtStyle = "%8.2f %30.18e")
+                                rngInternal.append(equivInternal)
+                                rngInternalT.append(equivInternalT)
+                            geomInternal.append(rngInternal)
+                            geomInternalT.append(rngInternalT)
+
+                    else:
+                        tmpCWD = self.CWD + "/" + self.prsr.geomDir + str(geom)
                         for bond in equivalentBonds: 
                             equivInternal  = []
                             equivInternalT = []
-                            self.internals.addInternal(positions[geom][rng], equivInternal,  
+                            self.internals.addInternal(positions[geom], equivInternal,  
                                                        equivInternalT, internalName = bond)
-                            saveFile = self.CWD + "/" + self.prsr.RNGdir + str(rng + 1) 
-                            saveFile += "/" + self.prsr.geomDir + str(geom + 1) + "/"
-                            saveFile += self.prsr.internalType + bond + ".dat" 
-                            writeNPFile(2, saveFile, [np.array(equivInternalT)*0.02418884254, 
-                                                      np.array(equivInternal)], 
-                                        fmtStyle = "%8.2f %30.18e")
-                            rngInternal.append(equivInternal)
-                            rngInternalT.append(equivInternalT)
-                        geomInternal.append(rngInternal)
-                        geomInternalT.append(rngInternalT)
-
-                else:
-                    tmpCWD = self.CWD + "/" + self.prsr.geomDir + str(geom)
-                    for bond in equivalentBonds: 
-                        equivInternal  = []
-                        equivInternalT = []
-                        self.internals.addInternal(positions[geom], equivInternal,  
-                                                   equivInternalT, internalName = bond)
-                        geomInternal.append(equivInternal)
-                        geomInternalT.append(equivInternalT)
-                internal.append(geomInternal)
-                internalTime.append(geomInternalT)
-        else:
-            tmpCWD = self.CWD 
-            for bond in equivalentBonds: 
-                equivInternal  = []
-                equivInternalT = []
-                self.internals.addInternal(equivInternal, tmpCWD,
-                                           internalName = bond,
-                                           internalTime = equivInternalT)
-                self.addInternal(internal, tmpCWD)
+                            geomInternal.append(equivInternal)
+                            geomInternalT.append(equivInternalT)
+                    internal.append(geomInternal)
+                    internalTime.append(geomInternalT)
+            else:
+                tmpCWD = self.CWD 
+                for bond in equivalentBonds: 
+                    equivInternal  = []
+                    equivInternalT = []
+                    self.internals.addInternal(equivInternal, tmpCWD,
+                                               internalName = bond,
+                                               internalTime = equivInternalT)
+                    self.addInternal(internal, tmpCWD)
 
         return internal, internalTime
 
