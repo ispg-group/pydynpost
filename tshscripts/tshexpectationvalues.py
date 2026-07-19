@@ -54,9 +54,13 @@ class internals(object):
             else:
                 print(len(positions[geom]))
                 self.addInternal(positions[geom], geomInternal, geomInternalT)
-                saveFile = self.CWD + "/" + self.prsr.geomDir + str(geom + 1) + "/"
+                saveFile = self.CWD + "/" + self.prsr.geomDir + str(geom + 1) + "/internals/"
+                try:
+                    os.mkdir(saveFile)
+                except:
+                    pass
                 saveFile += self.prsr.internalType + self.prsr.internalName + ".dat" 
-                writeNPFile(2, saveFile, [np.array(geomInternalT), 
+                writeNPFile(2, saveFile, [np.array(geomInternalT)*0.02418884254, 
                                           np.array(geomInternal)], 
                             fmtStyle = "%8.2f %30.18e")
 
