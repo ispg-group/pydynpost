@@ -6,7 +6,7 @@ from .filesys import *
 from .misc import *
 from .parse import *
 
-def addTraj(fileName, nrAtoms, readTimestep):
+def addTraj(fileName, nrAtoms, readTimestep, tZero=0.0):
     """
         Since most trajectory files have the same
         structure but a different position of the 
@@ -53,7 +53,7 @@ def addTraj(fileName, nrAtoms, readTimestep):
             else:
                 nrLines += 1
                 curTime = readTimestep(curSpltLine) 
-                posTimes.append(curTime)
+                posTimes.append(curTime+tZero)
                 continue
 
     return list(zip(posTimes,positions))

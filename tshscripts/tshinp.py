@@ -14,6 +14,10 @@ def initParser(parser):
         parser.addd("geomDir", "geom")
     if (("population" in parser.todo) or ("coupling" in parser.todo)):
         parser.addInput("nrStates", "How many states?")
+    if "population" in parser.todo:
+        parser.addInput("gapThresh", "Minimum energy gap between states to throw out trajs.")
+        if parser.code == "ABIN":
+            parser.addInput("minEnergy", "Energy of gs minimum?")
     parser.addInput("maxTime", "What is the largest time step?")
     parser.addInput("step", "Which resolution do you want?")
     parser.addd("interpTime", np.arange(0, parser.maxTime + parser.step, 
@@ -43,5 +47,12 @@ def initParser(parser):
     if "coupling" in parser.todo:
         parser.addInput("couplingType", "What type of effective nac was used?")
         parser.addInput("CSThresh", "What type of effective nac was used?")
+
+    if "monitor" in parser.todo: 
+        parser.addInput("monitorObservable", "Which observable do you want to monitor?")
+        if parser.monitorObservable == "energies":
+            parser.addInput("nrStates", "How many states?")
+            if parser.code == "ABIN":
+                parser.addInput("minEnergy", "Energy of gs minimum?")
 
     return parser
